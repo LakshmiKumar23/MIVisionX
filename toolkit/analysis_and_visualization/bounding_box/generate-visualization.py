@@ -30,123 +30,131 @@ __status__      = "Alpha"
 import os
 import getopt
 import sys
-#import random
+import argparse
 import collections
 import csv
-#import numpy
+import numpy as np
 import datetime
-
-opts, args = getopt.getopt(sys.argv[1:], 'i:o:f:l:g:d:t:')
-
-inputCSVFile = '';
-inputImageDirectory = '';
-outputDirectory = '';
-fileName = '';
-labelFile = '';
-groundTruthFile = '';
-boundingBoxToolFile = ''
-
-for opt, arg in opts:
-    if opt == '-i':
-        inputCSVFile = arg;
-    elif opt == '-d':
-        inputImageDirectory = arg;
-    elif opt == '-o':
-        outputDirectory = arg;        
-    elif opt == '-f':
-        fileName = arg;
-    elif opt == '-l':
-        labelFile = arg;
-    elif opt == '-g':
-        groundTruthFile = arg;
-    elif opt == '-t':
-        boundingBoxToolFile = arg;
-
-# report error
-if inputCSVFile == '' or outputDirectory == '' or labelFile == '' or groundTruthFile == '' or inputImageDirectory == '' or boundingBoxToolFile == '':
-    print('Invalid command line arguments.\n'
-        '\t\t\t\t-i [input Result CSV File - required](File Format:ImgFileName, L,R,L,R,L,R,L,R)[L:Label R:Result]\n'\
-        '\t\t\t\t-d [input Image Directory - required]\n'\
-        '\t\t\t\t-o [output Directory - required]\n'\
-        '\t\t\t\t-l [input Label File      - required]\n'\
-        '\t\t\t\t-f [output file name - required]\n'\
-        '\t\t\t\t-g [ground truth File - required]\n'\
-        '\t\t\t\t-t [bounding box tool output file - required]\n')
-
-    exit();
-
-
-if not os.path.exists(inputImageDirectory):
-    print "ERROR Invalid Input Image Directory";
-    exit();
-
-if not os.path.exists(outputDirectory):
-    os.makedirs(outputDirectory);
-
-# read results.csv
-numElements = 0;
-with open(inputCSVFile) as resultFile:
-    resultCSV = csv.reader(resultFile)
-    next(resultCSV) # skip header
-    resultDataBase = [r for r in resultCSV]
-    numElements = len(resultDataBase)
-
-# read labels.csv
-labelElements = 0;
-with open(labelFile) as labels:
-    labelCSV = csv.reader(labels)
-    next(labelCSV) # skip header
-    labelLines = [r for r in labelCSV]
-    labelElements = len(labelLines)
-
-# read groundtruth.csv
-groundtruthElements = 0;
-with open(groundTruthFile) as gt:
-    groundtruthCSV = csv.reader(gt)
-    next(groundtruthCSV) # skip header
-    gtLines = [r for r in groundtruthCSV]
-    gtElements = len(gtLines)
-
-# read boundingBoxToolFile.csv
-toolElements = 0;
-with open(boundingBoxToolFile) as bb:
-    boundingBoxCSV = csv.reader(bb)
-    next(boundingBoxCSV) # skip header
-    boxLines = [r for r in boundingBoxCSV]
-    boxElements = len(boxLines)
-
- # create toolkit with icons and images
-toolKit_Dir = outputDirectory +'/'+ fileName + '-toolKit'
-toolKit_dir = os.path.expanduser(toolKit_Dir)
-if not os.path.exists(toolKit_dir):
-    os.makedirs(toolKit_dir);
-
-# copy images and icons
 from distutils.dir_util import copy_tree
-fromDirectory = inputImageDirectory;
-toDirectory = toolKit_dir+'/images';
-copy_tree(fromDirectory, toDirectory)
+import shutil
+import logging
+import json
 
-from distutils.dir_util import copy_tree
-dir_path = os.path.dirname(os.path.realpath(__file__))
-fromDirectory = dir_path+'/icons';
-toDirectory = toolKit_dir+'/icons';
-copy_tree(fromDirectory, toDirectory)
-#copy utils
-new_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-fromDirectory = new_path+'/utils';
-toDirectory = toolKit_dir+'/utils';
-copy_tree(fromDirectory, toDirectory)
+logFormatter = logging.Formatter(
+    "%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s")
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+consoleHandler = logging.StreamHandler(sys.stdout)
+consoleHandler.setFormatter(logFormatter)
+logger.addHandler(consoleHandler)
 
-dataFolder = 'images';
+def readInferenceResultFile(inputCSVFile):
+    """Reads inference csv file
+    Args:
+        inputCSVFile (string): path of the file
+    Returns:
+        tuple: elements of file as list and length of the list
+    """
+    numElements = 0
+    with open(inputCSVFile) as resultFile:
+        resultCSV = csv.reader(resultFile)
+        next(resultCSV)  # skip header
+        resultDataBase = [r for r in resultCSV]
+        numElements = len(resultDataBase)
+    return resultDataBase, numElements
 
-#create results directory
-resultsDirectory = toolKit_dir+'/results';
-if not os.path.exists(resultsDirectory):
-    os.makedirs(resultsDirectory);
+def readLabelFile(labelFile):
+    """Reads the label file and creates a label list
+    Args:
+        labelFile (string): path of the label file
+    Returns:
+        tuple: A list of label lines and the length of the list
+    """
+    with open(labelFile, 'r') as labels:
+        labelLines = [l.strip().split(' ', 1)[1] for l in labels]
+    return labelLines, len(labelLines)
 
-dirs = sorted(os.listdir(inputImageDirectory))
+def readGroundTruthFile(groundTruthFile):
+    """Reads ground truth csv file
+    Args:
+        groundTruthFile (string): path of the file
+    Returns:
+        tuple: elements of file as list and length of the list
+    """
+	gtLines = 0;
+	with open(groundTruthFile) as gt:
+	    groundtruthCSV = csv.reader(gt)
+	    next(groundtruthCSV) # skip header
+	    gtLines = [r for r in groundtruthCSV]
+	    gtElements = len(gtLines)
+	return gtLines, gtElements
 
+def readboxTruthFile(boxTruthFile):
+	"""Reads ground truth csv file
+    Args:
+        groundTruthFile (string): path of the file
+    Returns:
+        tuple: elements of file as list and length of the list
+    """
+	boxElements = 0;
+	with open(boundingBoxToolFile) as bb:
+	    boundingBoxCSV = csv.reader(bb)
+	    next(boundingBoxCSV) # skip header
+	    boxLines = [r for r in boundingBoxCSV]
+	    boxElements = len(boxLines)
+	return boxLines, boxElements
+
+def copyHtmlAssets(outputDirectory, fileName):
+    """Makes required output directories and copies all required html files.
+    Copies icons, tablesort file inside util directory, all scripts, styles and
+    main html file  inside the output directory
+    Args:
+        outputDirectory (string): root directory path to copy files to
+        fileName (string): name of output directory where the files will be copied to
+    Returns:
+        tuple: (created output directory path, results directory path)
+    """
+	# create toolkit with icons and images
+	toolKit_Dir = os.path.join(outputDirectory, fileName + '-toolKit')
+	toolKit_dir = os.path.expanduser(toolKit_Dir)
+	if not os.path.exists(toolKit_dir):
+	    os.makedirs(toolKit_dir)
+	# copy scripts and icons
+	dir_path = os.path.dirname(os.path.realpath(__file__))
+	fromDirectory = os.path.join(dir_path, 'icons')
+	toDirectory = os.path.join(toolKit_dir, 'icons')
+	copy_tree(fromDirectory, toDirectory)
+	#copy utils
+	new_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+	fromDirectory = os.path.join(new_path, 'utils')
+	toDirectory = os.path.join(toolKit_dir, 'utils')
+	copy_tree(fromDirectory, toDirectory)
+
+	#create results directory
+	resultsDirectory = os.path.join(toolKit_dir, 'results')
+	if not os.path.exists(resultsDirectory):
+	    os.makedirs(resultsDirectory)
+
+	dir_path = os.path.dirname(os.path.realpath(__file__))
+
+    dirsToCopy = ['scripts', 'styles']
+    for srcDir in dirsToCopy:
+        fromDirectory = os.path.join(dir_path, 'assets', srcDir)
+        toDirectory = os.path.join(toolKit_Dir, srcDir)
+        copy_tree(fromDirectory, toDirectory)
+
+    # Copy the main template files
+    shutil.copy(os.path.join(dir_path, 'assets', 'templates',
+                             'index.html'), os.path.join(toolKit_Dir, 'index.html'))
+
+    return toolKit_dir, resultsDirectory
+
+	#dirs = sorted(os.listdir(inputImageDirectory))
+
+def copyImages(imagesSource, toolkit_dir):
+    dest = os.path.join(toolkit_dir, 'images')
+    copy_tree(imagesSource, dest)
+    return dest
 
 # generate results summary
 modelName = 'Object Detection'
@@ -176,7 +184,6 @@ print "resultsSummary.txt generation .."
 orig_stdout = sys.stdout
 sys.stdout = open(resultsDirectory+'/resultsSummary.txt','w')
 print("\n\n ***************** OBJECT DETECTION SUMMARY ***************** \n");
-import numpy as np
 
 print('Total Number of Images -- '+ str(totalImages));
 print('Total Number of Bounding Boxes -- '+ str(totalBoundingBox));
@@ -1593,3 +1600,115 @@ print ("\n</html>");
 sys.stdout = orig_stdout
 print "index.html generated"
 exit (0)
+
+def main():
+    # AMD Data Analysis Toolkit - Bounding Box
+    logger.debug("AMD Data Analysis Toolkit - Bounding Box")
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--inference_results',  type=str, required=True,
+                        help='input inference results CSV file          [required] (File Format:ImgFileName, Label, Result, Label, Result, Label, Result, Label, Result, Label, Result)')
+    parser.add_argument('--image_dir',          type=str, required=False,
+                        help='input image directory used in inference   [optional]')
+    parser.add_argument('--label',              type=str, required=True,
+                        help='input labels text file                    [required]')
+    parser.add_argument('--model_name',         type=str, default='',
+                        help='input inferece model name                 [optional]')
+    parser.add_argument('--output_dir',         type=str, required=True,
+                        help='output dir to store ADAT results          [required]')
+    parser.add_argument('--output_name',        type=str, required=True,
+                        help='output ADAT file name                     [required]')
+    parser.add_argument('--ground_truth',        type=str, required=True,
+                        help='ground truth file name                     [required]')
+    parser.add_argument('--bb_truth_file',        type=str, required=True,
+                        help='bounding box tool output file name                     [required]')
+
+    args = parser.parse_args()
+
+    modelName = args.model_name if args.model_name else 'Generic Model'
+
+    inputCSVFile = args.inference_results
+    inputImageDirectory = args.image_dir
+    groundTruthFile = args.ground_truth
+    boxTruthFile = args.bb_truth_file
+    labelFile = args.label
+    hierarchyFile = args.hierarchy
+    modelName = args.model_name
+    outputDirectory = args.output_dir
+    fileName = args.output_name
+
+    if inputImageDirectory:
+        if not os.path.exists(args.image_dir):
+            print("ERROR: Invalid Input Image Directory")
+            exit()
+
+    if not os.path.exists(outputDirectory):
+        os.makedirs(outputDirectory)
+
+    # read inference results file
+    resultDataBase, _ = readInferenceResultFile(inputCSVFile)
+
+    # read label file
+    labelLines, labelElements = readLabelFile(labelFile)
+
+    # read ground truth file
+    gtLines, gtElements = readGroundTruthFile(groundTruthFile)
+
+    #read bounding box tool file
+    boxLines, boxElements = readBoxTruthFile(boxTruthFile)
+
+    toolkit_dir, resultsDirectory = copyHtmlAssets(outputDirectory, fileName)
+    imageDir = None
+    if inputImageDirectory:
+        imageDir = copyImages(inputImageDirectory, toolkit_dir)
+
+    
+
+    """generateTop1Result(resultsDirectory, resultDataBase, labelLines)
+
+    stats, topCounts, topKStats = generateComprehensiveResults(
+        resultsDirectory, resultDataBase, labelLines, imageDir, modelName)
+
+    generateCompareResultSummary(toolkit_dir, modelName, 'images', stats)
+
+    methodScores = None
+    chartData = None
+
+    # Check if hierarchy option is given, if it is given process hierarchy and generate script files as needed
+    if args.hierarchy:
+        hierarchyDataBase, hierarchyElements = readHierarchyFile(hierarchyFile)
+        if hierarchyElements != labelElements:
+            print("ERROR Invalid Hierarchy file / label File")
+            exit()
+
+        topKPassFail, topKHierarchyPassFail = processHierarchy(
+            resultDataBase, labelLines, hierarchyDataBase)
+
+        generateHierarchySummary(
+            resultsDirectory, topKPassFail, topKHierarchyPassFail)
+
+        methodScores = createHirerchySummaryScore(
+            stats, topCounts, resultDataBase, labelLines, hierarchyDataBase, topKPassFail)
+
+        chartData = getSuccessFailureChartData(
+            stats, topKPassFail, topKHierarchyPassFail)
+
+
+             # Write hierarchy json, if no hierarchy creates an empty file
+        writeHierarchyJson(resultsDirectory, topKPassFail, topKHierarchyPassFail)
+    else:
+        writeHierarchyJson(resultsDirectory, None, None)
+
+    modelScores, matchCounts = createScoreSummary(stats, topCounts)
+	"""
+    # Write to result json
+    writeResultsJson(resultsDirectory, stats, topCounts, topKStats,
+                     modelScores, matchCounts, methodScores, chartData, )
+
+   
+	
+    logger.debug("HTML generation complete")
+
+
+if __name__ == '__main__':
+    main()
