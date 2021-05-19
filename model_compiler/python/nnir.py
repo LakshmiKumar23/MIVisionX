@@ -154,7 +154,6 @@ class IrAttr(object):
             name = saL[0]
             value = saL[1]
             value_type = type(self.dict_values[name]).__name__
-            print(name, value, type(value), value_type)
             if value_type == 'list':
                 list_type = value.split(',')
                 self.set(name, [int(x) for x in list_type] if (list_type[0].count('.') == 0) else [float(x) for x in list_type])
@@ -543,7 +542,7 @@ class IrGraph(object):
                     while len(out_shape) < 4:
                         out_shape.append(1)
                     node.attr.set('shape', out_shape)
-                    node.type = 'reshape'
+                    node.type = 'copy'
                     local = IrTensor()
                     local.setName(output)
                     local.setInfo(input.type, out_shape)
@@ -559,7 +558,7 @@ class IrGraph(object):
                     while(len(out_shape) < 4):
                         out_shape.append(1)
                     node.attr.set('shape', out_shape)
-                    node.type = 'reshape'
+                    node.type = 'copy'
                     local = IrTensor()
                     local.setName(output)
                     local.setInfo(input.type, out_shape)
@@ -764,6 +763,7 @@ class IrGraph(object):
                     elif axes == [0, 2, 1]:
                         format = 'NCHW'
                         shape = [input.shape[0], input.shape[2], input.shape[1], input.shape[3]]
+                        axes = node.attr.set('axes', [0,2,1,3])
                     else:
                         raise ValueError("transpose: unsupported transpose: " + input.toString() + " " + str(axes))
                     local = IrTensor()

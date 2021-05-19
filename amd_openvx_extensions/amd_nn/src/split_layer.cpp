@@ -181,7 +181,7 @@ static vx_status VX_CALLBACK processSplitLayer(vx_node node, const vx_reference 
     }
     else
     {   
-        /* add split details not cl_mem*/ 
+        /* add split details not cl_mem 
         cl_mem split_mem;
         ERROR_CHECK_STATUS(vxQueryTensor((vx_tensor)parameters[6], VX_TENSOR_BUFFER_OPENCL, &split_mem, sizeof(data->input_mem)));
 
@@ -210,7 +210,7 @@ static vx_status VX_CALLBACK processSplitLayer(vx_node node, const vx_reference 
                     ERROR_CHECK_STATUS(clEnqueueCopyBuffer(data->handle->cmdq, data->input_mem, data->output_mem[3], 0, (*split_mem*input_stride[0]*input_stride[2]), data->memsizeInBytes[3], 0, NULL, NULL));
                 }
             }
-        }
+        }*/
     }
 
     return VX_SUCCESS;
