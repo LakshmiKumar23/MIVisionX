@@ -33,6 +33,7 @@ static vx_status VX_CALLBACK validateSplitLayer(vx_node node, const vx_reference
 {
     // check input and output tensor dimensions
     vx_size num_dims;
+    vx_int32 axis;
     vx_enum type, out_type, scalar_type;
     vx_size input_dims[4], output1_dims[4], output2_dims[4], output3_dims[4], output4_dims[4];
 
@@ -51,7 +52,7 @@ static vx_status VX_CALLBACK validateSplitLayer(vx_node node, const vx_reference
     // set output tensor configuration
     ERROR_CHECK_STATUS(vxSetMetaFormatAttribute(metas[0], VX_TENSOR_DATA_TYPE, &out_type, sizeof(out_type)));
     ERROR_CHECK_STATUS(vxSetMetaFormatAttribute(metas[0], VX_TENSOR_NUMBER_OF_DIMS, &num_dims, sizeof(num_dims)));
-    ERROR_CHECK_STATUS(vxSetMetaFormatAttribute(metas[0], VX_TENSOR_DIMS, output1_dims, sizeof(output_dims)));
+    ERROR_CHECK_STATUS(vxSetMetaFormatAttribute(metas[0], VX_TENSOR_DIMS, output1_dims, sizeof(output1_dims)));
 
     ERROR_CHECK_STATUS(vxQueryTensor((vx_tensor)parameters[1], VX_TENSOR_NUMBER_OF_DIMS, &num_dims, sizeof(num_dims)));
     ERROR_CHECK_STATUS(vxQueryTensor((vx_tensor)parameters[1], VX_TENSOR_DATA_TYPE, &out_type, sizeof(out_type)));
@@ -62,41 +63,47 @@ static vx_status VX_CALLBACK validateSplitLayer(vx_node node, const vx_reference
     // set output tensor configuration
     ERROR_CHECK_STATUS(vxSetMetaFormatAttribute(metas[1], VX_TENSOR_DATA_TYPE, &out_type, sizeof(out_type)));
     ERROR_CHECK_STATUS(vxSetMetaFormatAttribute(metas[1], VX_TENSOR_NUMBER_OF_DIMS, &num_dims, sizeof(num_dims)));
-    ERROR_CHECK_STATUS(vxSetMetaFormatAttribute(metas[1], VX_TENSOR_DIMS, output2_dims, sizeof(output_dims)));
+    ERROR_CHECK_STATUS(vxSetMetaFormatAttribute(metas[1], VX_TENSOR_DIMS, output2_dims, sizeof(output2_dims)));
 
-    ERROR_CHECK_STATUS(vxQueryTensor((vx_tensor)parameters[2], VX_TENSOR_NUMBER_OF_DIMS, &num_dims, sizeof(num_dims)));
-    ERROR_CHECK_STATUS(vxQueryTensor((vx_tensor)parameters[2], VX_TENSOR_DATA_TYPE, &out_type, sizeof(out_type)));
-    if(num_dims != 4) return ERRMSG(VX_ERROR_INVALID_DIMENSION, "validate: split: #3 num_dims=%ld (must be 4)\n", num_dims);
-    if ((out_type != VX_TYPE_FLOAT32) && (out_type != VX_TYPE_FLOAT16)) return ERRMSG(VX_ERROR_INVALID_TYPE, "validate: split: #3 type=%d (must be float)\n", type);
-    ERROR_CHECK_STATUS(vxQueryTensor((vx_tensor)parameters[2], VX_TENSOR_DIMS, output3_dims, sizeof(output3_dims)));
-    if(type != out_type) return ERRMSG(VX_ERROR_INVALID_DIMENSION, "validate: split: #3 output type(%d) does not match input type(%d)\n", out_type, type);
-    // set output tensor configuration
-    ERROR_CHECK_STATUS(vxSetMetaFormatAttribute(metas[2], VX_TENSOR_DATA_TYPE, &out_type, sizeof(out_type)));
-    ERROR_CHECK_STATUS(vxSetMetaFormatAttribute(metas[2], VX_TENSOR_NUMBER_OF_DIMS, &num_dims, sizeof(num_dims)));
-    ERROR_CHECK_STATUS(vxSetMetaFormatAttribute(metas[2], VX_TENSOR_DIMS, output3_dims, sizeof(output_dims)));
+    if(parameters[2])
+    {
+        ERROR_CHECK_STATUS(vxQueryTensor((vx_tensor)parameters[2], VX_TENSOR_NUMBER_OF_DIMS, &num_dims, sizeof(num_dims)));
+        ERROR_CHECK_STATUS(vxQueryTensor((vx_tensor)parameters[2], VX_TENSOR_DATA_TYPE, &out_type, sizeof(out_type)));
+        if(num_dims != 4) return ERRMSG(VX_ERROR_INVALID_DIMENSION, "validate: split: #3 num_dims=%ld (must be 4)\n", num_dims);
+        if ((out_type != VX_TYPE_FLOAT32) && (out_type != VX_TYPE_FLOAT16)) return ERRMSG(VX_ERROR_INVALID_TYPE, "validate: split: #3 type=%d (must be float)\n", type);
+        ERROR_CHECK_STATUS(vxQueryTensor((vx_tensor)parameters[2], VX_TENSOR_DIMS, output3_dims, sizeof(output3_dims)));
+        if(type != out_type) return ERRMSG(VX_ERROR_INVALID_DIMENSION, "validate: split: #3 output type(%d) does not match input type(%d)\n", out_type, type);
+        // set output tensor configuration
+        ERROR_CHECK_STATUS(vxSetMetaFormatAttribute(metas[2], VX_TENSOR_DATA_TYPE, &out_type, sizeof(out_type)));
+        ERROR_CHECK_STATUS(vxSetMetaFormatAttribute(metas[2], VX_TENSOR_NUMBER_OF_DIMS, &num_dims, sizeof(num_dims)));
+        ERROR_CHECK_STATUS(vxSetMetaFormatAttribute(metas[2], VX_TENSOR_DIMS, output3_dims, sizeof(output3_dims)));
+    }
 
-    ERROR_CHECK_STATUS(vxQueryTensor((vx_tensor)parameters[3], VX_TENSOR_NUMBER_OF_DIMS, &num_dims, sizeof(num_dims)));
-    ERROR_CHECK_STATUS(vxQueryTensor((vx_tensor)parameters[3], VX_TENSOR_DATA_TYPE, &out_type, sizeof(out_type)));
-    if(num_dims != 4) return ERRMSG(VX_ERROR_INVALID_DIMENSION, "validate: split: #4 num_dims=%ld (must be 4)\n", num_dims);
-    if ((out_type != VX_TYPE_FLOAT32) && (out_type != VX_TYPE_FLOAT16)) return ERRMSG(VX_ERROR_INVALID_TYPE, "validate: split: #4 type=%d (must be float)\n", type);
-    ERROR_CHECK_STATUS(vxQueryTensor((vx_tensor)parameters[3], VX_TENSOR_DIMS, output4_dims, sizeof(output4_dims)));
-    if(type != out_type) return ERRMSG(VX_ERROR_INVALID_DIMENSION, "validate: split: #4 output type(%d) does not match input type(%d)\n", out_type, type);
-    // set output tensor configuration
-    ERROR_CHECK_STATUS(vxSetMetaFormatAttribute(metas[3], VX_TENSOR_DATA_TYPE, &out_type, sizeof(out_type)));
-    ERROR_CHECK_STATUS(vxSetMetaFormatAttribute(metas[3], VX_TENSOR_NUMBER_OF_DIMS, &num_dims, sizeof(num_dims)));
-    ERROR_CHECK_STATUS(vxSetMetaFormatAttribute(metas[3], VX_TENSOR_DIMS, output4_dims, sizeof(output_dims)));
+    if(parameters[3])
+    {
+        ERROR_CHECK_STATUS(vxQueryTensor((vx_tensor)parameters[3], VX_TENSOR_NUMBER_OF_DIMS, &num_dims, sizeof(num_dims)));
+        ERROR_CHECK_STATUS(vxQueryTensor((vx_tensor)parameters[3], VX_TENSOR_DATA_TYPE, &out_type, sizeof(out_type)));
+        if(num_dims != 4) return ERRMSG(VX_ERROR_INVALID_DIMENSION, "validate: split: #4 num_dims=%ld (must be 4)\n", num_dims);
+        if ((out_type != VX_TYPE_FLOAT32) && (out_type != VX_TYPE_FLOAT16)) return ERRMSG(VX_ERROR_INVALID_TYPE, "validate: split: #4 type=%d (must be float)\n", type);
+        ERROR_CHECK_STATUS(vxQueryTensor((vx_tensor)parameters[3], VX_TENSOR_DIMS, output4_dims, sizeof(output4_dims)));
+        if(type != out_type) return ERRMSG(VX_ERROR_INVALID_DIMENSION, "validate: split: #4 output type(%d) does not match input type(%d)\n", out_type, type);
+        // set output tensor configuration
+        ERROR_CHECK_STATUS(vxSetMetaFormatAttribute(metas[3], VX_TENSOR_DATA_TYPE, &out_type, sizeof(out_type)));
+        ERROR_CHECK_STATUS(vxSetMetaFormatAttribute(metas[3], VX_TENSOR_NUMBER_OF_DIMS, &num_dims, sizeof(num_dims)));
+        ERROR_CHECK_STATUS(vxSetMetaFormatAttribute(metas[3], VX_TENSOR_DIMS, output4_dims, sizeof(output4_dims)));
+    }
 
     ERROR_CHECK_STATUS(vxQueryScalar((vx_scalar)parameters[5], VX_SCALAR_TYPE, &scalar_type, sizeof(scalar_type)));
-    if(scalar_type != VX_TYPE_INT32) return VX_ERROR_INVALID_TYPE;
+    if(scalar_type != VX_TYPE_INT32 && scalar_type != VX_TYPE_INT64) return VX_ERROR_INVALID_TYPE;
     ERROR_CHECK_STATUS(vxCopyScalar((vx_scalar)parameters[5], &axis, VX_READ_ONLY, VX_MEMORY_TYPE_HOST));
-    if(axis < -4 || axis > 3) return ERRMSG(VX_ERROR_INVALID_VALUE, "validate: split: #6 scalar type=%d (must be greater than -5 and lesser than 3)\n", axis); 
+    if(axis < 0 || axis > 3) return ERRMSG(VX_ERROR_INVALID_VALUE, "validate: split: #6 scalar type=%d (must be greater than -5 and lesser than 3)\n", axis); 
 
     // check if the input and sum of all output are of the same size in memory
     if (((output1_dims[0]*output1_dims[1]*output1_dims[2]*output1_dims[3]) 
             + (output2_dims[0]*output2_dims[1]*output2_dims[2]*output2_dims[3]) 
             + (output3_dims[0]*output3_dims[1]*output3_dims[2]*output3_dims[3])  
-            + (output4_dims[0]*output4_dims[1]*output4_dims[2]*output4_dims[3]) != (input_dims[0]*input_dims[1]*input_dims[2]*input_dims[3]))) 
-         return ERRMSG(VX_ERROR_INVALID_DIMENSION, "validate: split:dimension mismatch; output1_dims[%ldx%ldx%ldx%ld] output2_dims[%ldx%ldx%ldx%ld] 
+            + (output4_dims[0]*output4_dims[1]*output4_dims[2]*output4_dims[3]) != (input_dims[0]*input_dims[1]*input_dims[2]*input_dims[3]))) \
+         return ERRMSG(VX_ERROR_INVALID_DIMENSION, "validate: split:dimension mismatch; output1_dims[%ldx%ldx%ldx%ld] output2_dims[%ldx%ldx%ldx%ld] \
                         output3_dims[%ldx%ldx%ldx%ld] output4_dims[%ldx%ldx%ldx%ld] input_dims[%ldx%ldx%ldx%ld]\n", 
                         output1_dims[3], output1_dims[2], output1_dims[1], output1_dims[0], 
                         output2_dims[3], output2_dims[2], output2_dims[1], output2_dims[0],
@@ -129,13 +136,82 @@ static vx_status VX_CALLBACK processSplitLayer(vx_node node, const vx_reference 
     ERROR_CHECK_STATUS(vxQueryTensor((vx_tensor)parameters[2], VX_TENSOR_BUFFER_OPENCL, &data->output_mem[2], sizeof(data->output_mem[2])));
     ERROR_CHECK_STATUS(vxQueryTensor((vx_tensor)parameters[3], VX_TENSOR_BUFFER_OPENCL, &data->output_mem[3], sizeof(data->output_mem[3])));
 
+    vx_int32 axis;
+    vx_size input_stride[4];
+    vx_int32 num_outputs = 2;
+    ERROR_CHECK_STATUS(vxCopyScalar((vx_scalar)parameters[5], &axis, VX_READ_ONLY, VX_MEMORY_TYPE_HOST));
+    ERROR_CHECK_STATUS(vxQueryTensor((vx_tensor)parameters[4], VX_TENSOR_STRIDE_OPENCL, input_stride, sizeof(input_stride)));
 
-    /* make changes to copy correct data...need to calculate src and dst offset
-    ERROR_CHECK_STATUS(clEnqueueCopyBuffer(data->handle->cmdq, data->input_mem, data->output_mem, 0, 0, data->memsizeInBytes[0], 0, NULL, NULL));
-    ERROR_CHECK_STATUS(clEnqueueCopyBuffer(data->handle->cmdq, data->input_mem, data->output_mem, 0, 0, data->memsizeInBytes[1], 0, NULL, NULL));
-    ERROR_CHECK_STATUS(clEnqueueCopyBuffer(data->handle->cmdq, data->input_mem, data->output_mem, 0, 0, data->memsizeInBytes[2], 0, NULL, NULL));
-    ERROR_CHECK_STATUS(clEnqueueCopyBuffer(data->handle->cmdq, data->input_mem, data->output_mem, 0, 0, data->memsizeInBytes[3], 0, NULL, NULL));
-    */
+    if(parameters[2])
+    {
+        if(parameters[3]) 
+            num_outputs = 4;
+        else
+            num_outputs = 3;
+    }
+
+    if(!parameters[6])          //splits tensor equally along given axis
+    {
+        if(axis == 0)
+        {
+            ERROR_CHECK_STATUS(clEnqueueCopyBuffer(data->handle->cmdq, data->input_mem, data->output_mem[0], 0, 0, data->memsizeInBytes[0], 0, NULL, NULL));
+            ERROR_CHECK_STATUS(clEnqueueCopyBuffer(data->handle->cmdq, data->input_mem, data->output_mem[1], 0, (input_stride[1])/num_outputs, data->memsizeInBytes[1], 0, NULL, NULL));
+            if(parameters[2])
+            {
+                ERROR_CHECK_STATUS(clEnqueueCopyBuffer(data->handle->cmdq, data->input_mem, data->output_mem[2], 0, (2*input_stride[1])/num_outputs, data->memsizeInBytes[2], 0, NULL, NULL));
+                if(parameters[3])
+                {
+                    ERROR_CHECK_STATUS(clEnqueueCopyBuffer(data->handle->cmdq, data->input_mem, data->output_mem[3], 0, (3*input_stride[1])/num_outputs, data->memsizeInBytes[3], 0, NULL, NULL));
+                }
+            }
+        }
+        else if(axis == 1)
+        {
+            ERROR_CHECK_STATUS(clEnqueueCopyBuffer(data->handle->cmdq, data->input_mem, data->output_mem[0], 0, 0, data->memsizeInBytes[0], 0, NULL, NULL));
+            ERROR_CHECK_STATUS(clEnqueueCopyBuffer(data->handle->cmdq, data->input_mem, data->output_mem[1], 0, (input_stride[2])/num_outputs, data->memsizeInBytes[1], 0, NULL, NULL));
+            if(parameters[2])
+            {
+                ERROR_CHECK_STATUS(clEnqueueCopyBuffer(data->handle->cmdq, data->input_mem, data->output_mem[2], 0, (2*input_stride[2])/num_outputs, data->memsizeInBytes[2], 0, NULL, NULL));
+                if(parameters[3])
+                {
+                    ERROR_CHECK_STATUS(clEnqueueCopyBuffer(data->handle->cmdq, data->input_mem, data->output_mem[3], 0, (3*input_stride[2])/num_outputs, data->memsizeInBytes[3], 0, NULL, NULL));
+                }
+            }
+        }
+    }
+    else
+    {   
+        /* add split details not cl_mem*/ 
+        cl_mem split_mem;
+        ERROR_CHECK_STATUS(vxQueryTensor((vx_tensor)parameters[6], VX_TENSOR_BUFFER_OPENCL, &split_mem, sizeof(data->input_mem)));
+
+        if(axis == 0)
+        {
+            ERROR_CHECK_STATUS(clEnqueueCopyBuffer(data->handle->cmdq, data->input_mem, data->output_mem[0], 0, 0, data->memsizeInBytes[0], 0, NULL, NULL));
+            ERROR_CHECK_STATUS(clEnqueueCopyBuffer(data->handle->cmdq, data->input_mem, data->output_mem[1], 0, (*split_mem*input_stride[0]*input_stride[1]), data->memsizeInBytes[1], 0, NULL, NULL));
+            if(parameters[2])
+            {
+                ERROR_CHECK_STATUS(clEnqueueCopyBuffer(data->handle->cmdq, data->input_mem, data->output_mem[2], 0, (*split_mem*input_stride[0]*input_stride[1]), data->memsizeInBytes[2], 0, NULL, NULL));
+                if(parameters[3])
+                {
+                    ERROR_CHECK_STATUS(clEnqueueCopyBuffer(data->handle->cmdq, data->input_mem, data->output_mem[3], 0, (*split_mem*input_stride[0]*input_stride[1]), data->memsizeInBytes[3], 0, NULL, NULL));
+                }
+            }
+        }
+        else if(axis == 1)
+        {
+            ERROR_CHECK_STATUS(clEnqueueCopyBuffer(data->handle->cmdq, data->input_mem, data->output_mem[0], 0, 0, data->memsizeInBytes[0], 0, NULL, NULL));
+            ERROR_CHECK_STATUS(clEnqueueCopyBuffer(data->handle->cmdq, data->input_mem, data->output_mem[1], 0, (*split_mem*input_stride[0]*input_stride[2]), data->memsizeInBytes[1], 0, NULL, NULL));
+            if(parameters[2])
+            {
+                ERROR_CHECK_STATUS(clEnqueueCopyBuffer(data->handle->cmdq, data->input_mem, data->output_mem[2], 0, (*split_mem*input_stride[0]*input_stride[2]), data->memsizeInBytes[2], 0, NULL, NULL));
+                if(parameters[3])
+                {
+                    ERROR_CHECK_STATUS(clEnqueueCopyBuffer(data->handle->cmdq, data->input_mem, data->output_mem[3], 0, (*split_mem*input_stride[0]*input_stride[2]), data->memsizeInBytes[3], 0, NULL, NULL));
+                }
+            }
+        }
+    }
 
     return VX_SUCCESS;
 }
@@ -186,7 +262,7 @@ static vx_status VX_CALLBACK uninitializeSplitLayer(vx_node node, const vx_refer
 //! \brief The kernel publisher.
 vx_status publishSplitLayer(vx_context context)
 {
-    vx_kernel kernel = vxAddUserKernel(context, "com.amd.nn_extension.split_layer", VX_KERNEL_SPLIT_LAYER_AMD, processSplitLayer, 6, validateReshapeLayer, initializeSplitLayer, uninitializeSplitLayer);
+    vx_kernel kernel = vxAddUserKernel(context, "com.amd.nn_extension.split_layer", VX_KERNEL_SPLIT_LAYER_AMD, processSplitLayer, 6, validateSplitLayer, initializeSplitLayer, uninitializeSplitLayer);
     ERROR_CHECK_OBJECT(kernel);
 
     // enable OpenCL buffer access since the kernel_f callback uses OpenCL buffers instead of host accessible buffers
