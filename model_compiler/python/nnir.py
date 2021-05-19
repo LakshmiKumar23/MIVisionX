@@ -236,6 +236,7 @@ class IrNode(object):
             'cast' : 1,
             'nms'  : 1,
             'constant' : 1,
+            'constant_of_shape' : 1,
             'gather' : 1,
             'topk'  : 1,
             'reduce_min' : 1,
@@ -475,6 +476,8 @@ class IrGraph(object):
                         shape = [input.shape[0], 0, input.shape[2], input.shape[3]]
                         for name in node.inputs:
                             lshape = self.tensor_shapes[name]
+                            while(len(lshape) < 4):
+                                lshape.append(1)
                             if shape[0:1] + shape[2:] != lshape[0:1] + lshape[2:]:
                                 raise ValueError("concat: mismatch detected: " + node.inputs[0] + ":" + str(shape) + " " + name + ":" + str(lshape))
                             shape[1] = shape[1] + lshape[1]
@@ -661,6 +664,7 @@ class IrGraph(object):
                     value = node.attr.get('value')
                     value = np.atleast_1d(value)
                     valueType = value.dtype
+                    
                     if valueType == 'float64':
                         tensorType = 'F064'
                     elif valueType == 'float32':
@@ -689,8 +693,48 @@ class IrGraph(object):
                     self.addVariable(constant_tensor)
                     self.addBinary(output, value)
 
+                    node.attr.dict_set.remove('value')
                     node.type = 'copy'
                     node.inputs.append(output)
+                    local = IrTensor()
+                    local.setName(output)
+                    local.setInfo(tensorType, shape)
+                    local.setFormat(tensorType)
+                    self.addLocal(local)
+                elif node.type in ['constant_of_shape']:
+                    value = 0
+                    value = node.attr.get('value')
+                    value = np.atleast_1d(value)
+                    valueType = value.dtype
+                    if valueType == 'float64':
+                        tensorType = 'F064'
+                    elif valueType == 'float32':
+                        tensorType = 'F032'
+                    elif valueType == 'float16':
+                        tensorType = 'F016'
+                    elif valueType == 'int64':
+                        tensorType = 'I064'
+                    elif valueType == 'int32':
+                        tensorType = 'I032'
+                    elif valueType == 'int16':
+                        tensorType = 'I016'
+                    elif valueType == 'uint16':
+                        tensorType = 'U016'
+                    elif valueType == 'uint8':
+                        tensorType = 'U008'
+                    else:
+                        raise ValueError("constant: Tensor type not supported: " + tensorType)
+            
+                    shape = np.frombuffer(self.binaries[node.inputs[0]], dtype=np.int64)
+                    input_value = np.full(shape, value)
+                    constant_tensor = IrTensor()
+                    constant_tensor.setName(output)
+                    constant_tensor.setInfo(tensorType, shape)
+                    self.addVariable(constant_tensor)                    
+                    self.addBinary(output, input_value)
+                    node.attr.set('value', value)
+                    node.inputs[0] = output
+                    node.type = 'copy'
                     local = IrTensor()
                     local.setName(output)
                     local.setInfo(tensorType, shape)
