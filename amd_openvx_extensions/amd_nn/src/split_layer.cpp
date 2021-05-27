@@ -19,16 +19,6 @@ THE SOFTWARE.
 
 #include "kernels.h"
 
-#include <stdio.h>
-#include <sys/stat.h>
-struct SplitLayerLocalData {
-    NeuralNetworkCommonHandle * handle;
-    cl_mem input_mem;
-    cl_mem output_mem[4];
-    vx_size memsizeInBytes[4];
-};
-
-
 static vx_status VX_CALLBACK validateSplitLayer(vx_node node, const vx_reference parameters[], vx_uint32 num, vx_meta_format metas[])
 {
     // check input and output tensor dimensions
@@ -125,7 +115,7 @@ static vx_status VX_CALLBACK validateSplitLayer(vx_node node, const vx_reference
 }
 
 
-static vx_status VX_CALLBACK processSplitLayer(vx_node node, const vx_reference * parameters, vx_uint32 num)
+/*static vx_status VX_CALLBACK processSplitLayer(vx_node node, const vx_reference * parameters, vx_uint32 num)
 {
     SplitLayerLocalData * data= NULL;
     ERROR_CHECK_STATUS(vxQueryNode(node, VX_NODE_LOCAL_DATA_PTR, &data, sizeof(data)));
@@ -181,9 +171,9 @@ static vx_status VX_CALLBACK processSplitLayer(vx_node node, const vx_reference 
     }
     else
     {   
-        /* add split details not cl_mem 
+        add split details -- cl_mem 
         cl_mem split_mem;
-        ERROR_CHECK_STATUS(vxQueryTensor((vx_tensor)parameters[6], VX_TENSOR_BUFFER_OPENCL, &split_mem, sizeof(data->input_mem)));
+        ERROR_CHECK_STATUS(vxQueryTensor((vx_tensor)parameters[6], VX_TENSOR_BUFFER_OPENCL, split_mem, sizeof(data->input_mem)));
 
         if(axis == 0)
         {
@@ -210,14 +200,121 @@ static vx_status VX_CALLBACK processSplitLayer(vx_node node, const vx_reference 
                     ERROR_CHECK_STATUS(clEnqueueCopyBuffer(data->handle->cmdq, data->input_mem, data->output_mem[3], 0, (*split_mem*input_stride[0]*input_stride[2]), data->memsizeInBytes[3], 0, NULL, NULL));
                 }
             }
-        }*/
+        }
     }
 
     return VX_SUCCESS;
+}*/
+
+//! \brief The kernel target support callback.
+static vx_status VX_CALLBACK query_target_support(vx_graph graph, vx_node node,
+    vx_bool use_opencl_1_2,              // [input]  false: OpenCL driver is 2.0+; true: OpenCL driver is 1.2
+    vx_uint32& supported_target_affinity // [output] must be set to AGO_TARGET_AFFINITY_CPU or AGO_TARGET_AFFINITY_GPU or (AGO_TARGET_AFFINITY_CPU | AGO_TARGET_AFFINITY_GPU)
+    )
+{
+    supported_target_affinity = AGO_TARGET_AFFINITY_GPU;
+    return VX_SUCCESS;
 }
 
+static vx_status VX_CALLBACK opencl_codegen(
+    vx_node node,                                  // [input] node
+    const vx_reference parameters[],               // [input] parameters
+    vx_uint32 num,                                 // [input] number of parameters
+    bool opencl_load_function,                     // [input]  false: normal OpenCL kernel; true: reserved
+    char opencl_kernel_function_name[64],          // [output] kernel_name for clCreateKernel()
+    std::string& opencl_kernel_code,               // [output] string for clCreateProgramWithSource()
+    std::string& opencl_build_options,             // [output] options for clBuildProgram()
+    vx_uint32& opencl_work_dim,                    // [output] work_dim for clEnqueueNDRangeKernel()
+    vx_size opencl_global_work[],                  // [output] global_work[] for clEnqueueNDRangeKernel()
+    vx_size opencl_local_work[],                   // [output] local_work[] for clEnqueueNDRangeKernel()
+    vx_uint32& opencl_local_buffer_usage_mask,     // [output] reserved: must be ZERO
+    vx_uint32& opencl_local_buffer_size_in_bytes   // [output] reserved: must be ZERO
+)
+{
+    //get tensor dimensions
+    vx_size input_dims[4], output_dims[4];
+    vx_size num_of_dims;
+    vx_enum type;
+    vx_size input_stride[4], output_stride[4];
 
-static vx_status VX_CALLBACK initializeSplitLayer(vx_node node, const vx_reference *parameters, vx_uint32 num)
+    ERROR_CHECK_STATUS(vxQueryTensor((vx_tensor)parameters[0], VX_TENSOR_NUMBER_OF_DIMS, &num_of_dims, sizeof(num_of_dims)));
+    ERROR_CHECK_STATUS(vxQueryTensor((vx_tensor)parameters[0], VX_TENSOR_DIMS, input_dims, sizeof(input_dims)));
+    ERROR_CHECK_STATUS(vxQueryTensor((vx_tensor)parameters[0], VX_TENSOR_STRIDE_OPENCL, input_stride, sizeof(input_stride)));
+
+    /*ERROR_CHECK_STATUS(vxQueryTensor((vx_tensor)parameters[2], VX_TENSOR_NUMBER_OF_DIMS, &num_of_dims, sizeof(num_of_dims)));
+    ERROR_CHECK_STATUS(vxQueryTensor((vx_tensor)parameters[2], VX_TENSOR_DIMS, output_dims, sizeof(output_dims)));
+    ERROR_CHECK_STATUS(vxQueryTensor((vx_tensor)parameters[2], VX_TENSOR_STRIDE_OPENCL, output_stride, sizeof(output_stride)));
+    */
+    vx_int32 num_outputs = 2;
+    if(parameters[2])
+    {
+        if(parameters[3]) 
+            num_outputs = 4;
+        else
+            num_outputs = 3;
+    }
+    strcpy(opencl_kernel_function_name, "split_layer");
+
+    opencl_work_dim = 3;
+    opencl_global_work[0] = input_dims[0]*input_dims[1];
+    opencl_global_work[1] = input_dims[2];
+    opencl_global_work[2] = input_dims[3];
+
+    // Setting variables required by the interface
+    opencl_local_buffer_usage_mask = 0;
+    opencl_local_buffer_size_in_bytes = 0;
+
+    if (num_of_dims == 4) {
+        char item[8192];
+        sprintf(item,
+            "#pragma OPENCL EXTENSION cl_amd_media_ops : enable\n"
+            "__kernel void %s( ");
+        opencl_kernel_code = item;
+
+        for(int i = 0; i < num_outputs; i++){
+                sprintf(item,
+                "__global float * out%d, uint out%d_offset, uint4 out%d_stride"  // i, i, i
+                , i, i, i);
+            opencl_kernel_code += item;
+        }
+        sprintf(item,
+            ",__global uchar * in, uint in_offset, uint4 in_stride, uint axis");
+        opencl_kernel_code = item;
+        if(parameters[6]) {
+            sprintf(item,
+            "__global uchar * split, uint split_offset, uint4 split_stride ");
+            opencl_kernel_code += item;
+        }
+        sprintf(item,
+            "                 )\n"
+            "{   \n"
+            "   uint c = get_global_id(0); \n "
+            "   uint x = get_global_id(1); \n "
+            "   uint y = get_global_id(2); \n "
+            "   int num_outputs = %d; \n"
+            "   if(axis == 0) { \n"
+            "       "
+            "   } \n"
+            "   else if(axis == 1) { \n"
+            "   } \n"
+            /*"   int i = y*out_stride.s2 + x*out_stride.s1 + c*out_stride.s0; \n"
+            "   int old_idx = 0; \n"
+            "   int idx = i; \n"
+            "   for(int k = num_axis-1, j = 0; k >= 0; k--, j++) {  \n"
+            "       int order = 3- ((__global int *)(order_buf+order_offset))[j]; \n"
+            "       old_idx += (idx/out_stride[k]) * (in_stride[order]);  \n"
+            "       idx %%= (out_stride[k]);  \n"
+            "   } \n"
+            "   out += out_offset + i; \n"
+            "   in += in_offset + old_idx; \n"
+            "   *(__global float *)&out[0] = *(__global float *)&in[0];  \n"*/
+            "}\n", opencl_kernel_function_name, (int)num_outputs);
+        opencl_kernel_code = item;
+    }
+    return VX_SUCCESS;
+}
+
+/*static vx_status VX_CALLBACK initializeSplitLayer(vx_node node, const vx_reference *parameters, vx_uint32 num)
 {
     vx_size dims[4];
     vx_enum type;
@@ -257,17 +354,25 @@ static vx_status VX_CALLBACK uninitializeSplitLayer(vx_node node, const vx_refer
         delete data;
     }
     return VX_SUCCESS;
+}*/
+
+//! \brief The kernel execution.
+static vx_status VX_CALLBACK host_kernel(vx_node node, const vx_reference * parameters, vx_uint32 num)
+{
+    return VX_ERROR_NOT_IMPLEMENTED;
 }
 
 //! \brief The kernel publisher.
 vx_status publishSplitLayer(vx_context context)
 {
-    vx_kernel kernel = vxAddUserKernel(context, "com.amd.nn_extension.split_layer", VX_KERNEL_SPLIT_LAYER_AMD, processSplitLayer, 6, validateSplitLayer, initializeSplitLayer, uninitializeSplitLayer);
+    vx_kernel kernel = vxAddUserKernel(context, "com.amd.nn_extension.split_layer", VX_KERNEL_SPLIT_LAYER_AMD, host_kernel, 6, validateSplitLayer, nullptr, nullptr);
     ERROR_CHECK_OBJECT(kernel);
 
-    // enable OpenCL buffer access since the kernel_f callback uses OpenCL buffers instead of host accessible buffers
-    vx_bool enableBufferAccess = vx_true_e;
-    ERROR_CHECK_STATUS(vxSetKernelAttribute(kernel, VX_KERNEL_ATTRIBUTE_AMD_OPENCL_BUFFER_ACCESS_ENABLE, &enableBufferAccess, sizeof(enableBufferAccess)));
+    amd_kernel_query_target_support_f query_target_support_f = query_target_support;
+    amd_kernel_opencl_codegen_callback_f opencl_codegen_callback_f = opencl_codegen;
+    ERROR_CHECK_STATUS(vxSetKernelAttribute(kernel, VX_KERNEL_ATTRIBUTE_AMD_QUERY_TARGET_SUPPORT, &query_target_support_f, sizeof(query_target_support_f)));
+    ERROR_CHECK_STATUS(vxSetKernelAttribute(kernel, VX_KERNEL_ATTRIBUTE_AMD_OPENCL_CODEGEN_CALLBACK, &opencl_codegen_callback_f, sizeof(opencl_codegen_callback_f)));
+
     // set kernel parameters.
     ERROR_CHECK_STATUS(vxAddParameterToKernel(kernel, 0, VX_OUTPUT, VX_TYPE_TENSOR, VX_PARAMETER_STATE_REQUIRED));
     ERROR_CHECK_STATUS(vxAddParameterToKernel(kernel, 1, VX_OUTPUT, VX_TYPE_TENSOR, VX_PARAMETER_STATE_REQUIRED));
