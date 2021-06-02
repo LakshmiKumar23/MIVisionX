@@ -773,6 +773,7 @@ class IrGraph(object):
                     elif axes == [0, 2, 1]:
                         format = 'NCHW'
                         shape = [input.shape[0], input.shape[2], input.shape[1], input.shape[3]]
+                        axes = node.attr.set('axes', [0,2,1,3])
                     else:
                         raise ValueError("transpose: unsupported transpose: " + input.toString() + " " + str(axes))
                     local = IrTensor()
