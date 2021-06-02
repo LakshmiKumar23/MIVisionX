@@ -917,7 +917,7 @@ static vx_status initializeTensor(vx_context context, vx_tensor tensor, FILE * f
                 f.write( \
 """
     { 
-      vx_node node = vxTopkLayer(graph, %s, %s, %d, %d, %d, %s, %s);
+      vx_node node = vxTopKLayer(graph, %s, %s, %d, %d, %d, %s, %s);
       ERROR_CHECK_OBJECT(node);
       ERROR_CHECK_STATUS(vxReleaseNode(&node));
     }    
