@@ -154,7 +154,6 @@ class IrAttr(object):
             name = saL[0]
             value = saL[1]
             value_type = type(self.dict_values[name]).__name__
-            print(name, value, type(value), value_type)
             if value_type == 'list':
                 list_type = value.split(',')
                 self.set(name, [int(x) for x in list_type] if (list_type[0].count('.') == 0) else [float(x) for x in list_type])
@@ -501,8 +500,7 @@ class IrGraph(object):
                     constant_tensor.setName(output)
                     constant_tensor.setInfo(input.type, shape)
                     self.addVariable(constant_tensor)
-                    self.addBinary(output, value)
-
+                    self.addBinary(output, value)            
                 elif node.type in ['slice']:
                     input = self.tensor_dict[node.inputs[0]]
                     out_shape = []
@@ -510,13 +508,18 @@ class IrGraph(object):
                     if node.inputs[1] not in self.tensor_dict or node.inputs[2] not in self.tensor_dict:
                         out_shape = [8,1,1]
                     else:
-                        starts = np.frombuffer(self.binaries[node.inputs[1]], dtype=np.int64)
-                        ends = np.frombuffer(self.binaries[node.inputs[2]], dtype=np.int64)
+                        if self.tensor_types[node.inputs[1]] == 'I064':
+                            npType = np.int64
+                        elif self.tensor_types[node.inputs[1]] == 'I032':
+                            npType = np.int32
+                        
+                        starts = np.frombuffer(self.binaries[node.inputs[1]], dtype=npType)
+                        ends = np.frombuffer(self.binaries[node.inputs[2]], dtype=npType)
                         if len(node.inputs) < 5:
                             steps = [1,1,1,1]
                         else:
-                            steps = np.frombuffer(self.binaries[node.inputs[4]], dtype=np.int64)
-                        
+                            steps = np.frombuffer(self.binaries[node.inputs[4]], dtype=npType)
+                         
                         for i in range(len(starts)):
                             dim_count = 0
                             value = starts[i]
@@ -597,8 +600,17 @@ class IrGraph(object):
                     else:
                         raise ValueError("div: Tensor type not supported: " + self.tensor_types[node.inputs[1]])
                     
-                    weight = np.frombuffer(self.binaries[node.inputs[1]], dtype=npType)
-                    self.binaries[node.inputs[1]] = np.reciprocal(weight)
+                    weight = np.frombuffer(self.binaries[node.inputs[1]], dtype=npType, count=1)
+                    rec = np.reciprocal(weight)
+                    name = 'const_' + input.name
+                    constant_tensor = IrTensor()
+                    constant_tensor.setName(name)
+                    constant_tensor.setInfo(self.tensor_types[node.inputs[1]], np.shape(rec))
+                    self.addVariable(constant_tensor)
+                    self.addBinary(name, rec)
+               
+                    node.inputs[1] = name
+
                     node.type = 'mul'
                     local = IrTensor()
                     local.setName(output)
@@ -692,7 +704,7 @@ class IrGraph(object):
                         tensorType = 'U008'
                     else:
                         raise ValueError("constant: Tensor type not supported: " + tensorType)
-                    #print("after constant = ",tensorType)
+
                     shape = list(value.shape)
                     if len(shape) == 0:
                         shape.append(1)
