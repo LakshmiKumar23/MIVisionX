@@ -917,7 +917,7 @@ static vx_status initializeTensor(vx_context context, vx_tensor tensor, FILE * f
                 f.write( \
 """
     { 
-      vx_node node = vxTopkLayer(graph, %s, %s, %d, %d, %d, %s, %s);
+      vx_node node = vxTopKLayer(graph, %s, %s, %d, %d, %d, %s, %s);
       ERROR_CHECK_OBJECT(node);
       ERROR_CHECK_STATUS(vxReleaseNode(&node));
     }    
@@ -974,8 +974,7 @@ static vx_status initializeTensor(vx_context context, vx_tensor tensor, FILE * f
 """
     { 
       vx_int32 axis = %d;
-      vx_scalar s_axis = vxCreateScalarWithSize(context, VX_TYPE_INT32, &axis, sizeof(axis));      
-      vx_node node = vxGatherLayer(graph, %s, %s, %s, s_axis);
+      vx_node node = vxGatherLayer(graph, %s, %s, %s, axis);
       ERROR_CHECK_OBJECT(node);
       ERROR_CHECK_STATUS(vxReleaseNode(&node));
     }    
