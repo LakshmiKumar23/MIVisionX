@@ -1519,8 +1519,9 @@ class IrGraph(object):
             for tensor in self.outputs:
                 f.write('output|' + tensor.toString() + '\n')
             for tensor in self.initializers:
-                if tensor.shape != []:
-                    f.write('initializer|' + tensor.toString() + '\n')
+                if tensor.shape == []:
+                    tensor.shape = [1]
+                f.write('initializer|' + tensor.toString() + '\n')
             for tensor in self.locals:
                 f.write('local|' + tensor.toString() + '\n')
             for node in self.nodes:
