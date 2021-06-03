@@ -508,7 +508,6 @@ class IrGraph(object):
                     out_shape = []
                     starts_name = 'const_' + node.inputs[1]
                     ends_name = 'const_' + node.inputs[2]
-                    steps_name = 'const_' + node.inputs[4]
 
                     if starts_name not in self.binaries or ends_name not in self.binaries:
                         out_shape = [8,1,1]
@@ -526,6 +525,7 @@ class IrGraph(object):
                         if len(node.inputs) < 5:
                             steps = [1,1,1,1]
                         else:
+                            steps_name = 'const_' + node.inputs[4]
                             steps = np.frombuffer(self.binaries[steps_name], dtype=npType)
                          
                         for i in range(len(starts)):
