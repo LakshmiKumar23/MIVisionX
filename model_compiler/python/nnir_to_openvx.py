@@ -754,7 +754,8 @@ static vx_status initializeTensor(vx_context context, vx_tensor tensor, FILE * f
                 f.write( \
 """
     { vx_node node = vxConcatLayer(graph, %s, %s, %s, %d);
-      ERROR_CHECK_OBJECT(node);ERROR_CHECK_STATUS(vxReleaseNode(&node));
+      ERROR_CHECK_OBJECT(node);
+      ERROR_CHECK_STATUS(vxReleaseNode(&node));
     }
 """ % (node.outputs[0], ', '.join([name for name in node.inputs]), \
        ', '.join(['NULL' for i in range(8 - len(node.inputs))]), node.attr.get('axis')))                    
@@ -994,51 +995,36 @@ static vx_status initializeTensor(vx_context context, vx_tensor tensor, FILE * f
                 axes = node.attr.get('axes')
                 axes_len = -1
                 if axes is None or not axes:
-                    axes = 4 #since cpp doesn't recognize None. And axes values can range between [-4,3]
-                    axes_len = 0
+                    axes.append(4) #since cpp doesn't recognize None. And axes values can range between [-4,3]
+                    axes_len = 1
                 else:
                     axes_len = len(axes)
-                if axes_len == 0:
-                    f.write(\
-"""
-    {
-      vx_node node = vxReduceMinLayer(graph, %s, %d, %d, %s);
-      ERROR_CHECK_OBJECT(node);
-      ERROR_CHECK_STATUS(vxReleaseNode(&node));
-    }
-""" % (node.inputs[0], axes, node.attr.get('keepdims'), node.outputs[0]))
-                else:
-                    if axes_len == 1:
-                        f.write( \
-"""
-    { 
-      int axes_list[1] = {%d};
-    }
-""" % (axes[0]))
-                    elif axes_len == 2:
-                        f.write( \
-"""
-    { 
-      int axes_list[2] = {%d, %d};
-    }
-""" % (axes[0], axes[1]))
-                    elif axes_len == 3:
-                        f.write( \
-"""
-    { 
-      int axes_list[3] = {%d, %d, %d};
-    }
-""" % (axes[0], axes[1], axes[2]))
-                    elif axes_len == 4:
-                        f.write( \
-"""
-    { 
-      int axes_list[4] = {%d, %d, %d, %d};
-    }
-""" % (axes[0], axes[1], axes[2], axes[3]))
+                if axes_len == 1:
                     f.write( \
 """
     { 
+      int axes_list[1] = {%d};
+""" % (axes[0]))
+                elif axes_len == 2:
+                    f.write( \
+"""
+    { 
+      int axes_list[2] = {%d, %d};
+""" % (axes[0], axes[1]))
+                elif axes_len == 3:
+                    f.write( \
+"""
+    { 
+      int axes_list[3] = {%d, %d, %d};
+""" % (axes[0], axes[1], axes[2]))
+                elif axes_len == 4:
+                    f.write( \
+"""
+    { 
+      int axes_list[4] = {%d, %d, %d, %d};
+""" % (axes[0], axes[1], axes[2], axes[3]))
+                f.write( \
+"""
       vx_array axes =  vxCreateArray(context, VX_TYPE_INT32, %d);
       ERROR_CHECK_STATUS(vxTruncateArray(axes,0));
       int *axes_ptr = &axes_list[0];
