@@ -517,10 +517,7 @@ class IrGraph(object):
                             npType = np.int64
                         elif self.tensor_types[node.inputs[1]] == 'I032':
                             npType = np.int32
-                        
-                        starts_name = 'const_' + node.inputs[1]
-                        ends_name = 'const_' + node.inputs[2]
-                        steps_name = 'const_' + node.inputs[4]
+                    
                         starts = np.frombuffer(self.binaries[starts_name], dtype=npType)
                         ends = np.frombuffer(self.binaries[ends_name], dtype=npType)
                         if len(node.inputs) < 5:
@@ -1523,8 +1520,9 @@ class IrGraph(object):
             for tensor in self.outputs:
                 f.write('output|' + tensor.toString() + '\n')
             for tensor in self.initializers:
-                if tensor.shape != []:
-                    f.write('initializer|' + tensor.toString() + '\n')
+                if tensor.shape == []:
+                    tensor.shape = [1]
+                f.write('initializer|' + tensor.toString() + '\n')
             for tensor in self.locals:
                 f.write('local|' + tensor.toString() + '\n')
             for node in self.nodes:
