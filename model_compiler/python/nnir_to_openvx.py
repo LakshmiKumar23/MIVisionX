@@ -930,7 +930,7 @@ static vx_status initializeTensor(vx_context context, vx_tensor tensor, FILE * f
     { 
       vx_node node = vxNMSLayer(graph, %s, %s, %d, %s, %s, %s, %s);
       ERROR_CHECK_OBJECT(node);     
-        
+    }
 """
     % (node.inputs[0], node.inputs[1], node.attr.get('center_point_box'), node.outputs[0], node.inputs[2], node.inputs[3], node.inputs[4]))
             elif node.type == 'detection_output':
