@@ -352,6 +352,7 @@ class IrGraph(object):
     def updateLocals(self):
         self.locals = []
         count = 0
+        constantCount = 0
         for node in self.nodes:
             for output in node.outputs:
                 count+=1
@@ -484,6 +485,8 @@ class IrGraph(object):
                         shape = [input.shape[0], input.shape[1], 0, input.shape[3]]
                         for name in node.inputs:
                             lshape = self.tensor_shapes[name]
+                            while(len(lshape) < 4):
+                                lshape.append(1)
                             if shape[0:2] + shape[3:] != lshape[0:2] + lshape[3:]:
                                 raise ValueError("concat: mismatch detected: " + node.inputs[0] + ":" + str(shape) + " " + name + ":" + str(lshape))
                             shape[2] = shape[2] + lshape[2]
@@ -492,21 +495,37 @@ class IrGraph(object):
                     local.setInfo(input.type, shape)
                     local.setFormat(input.format)
                     self.addLocal(local)
-                    self.addBinary(output, bytes(shape))
+
+                    value = np.atleast_1d(shape)
+                    tensor_name = 'const_' + output
+                    constant_tensor = IrTensor()
+                    constant_tensor.setName(tensor_name)
+                    constant_tensor.setInfo(input.type, shape)
+                    self.addVariable(constant_tensor)
+                    self.addBinary(tensor_name, value)
+                    
                 elif node.type in ['slice']:
                     input = self.tensor_dict[node.inputs[0]]
                     out_shape = []
-                    
-                    if node.inputs[1] not in self.tensor_dict or node.inputs[2] not in self.tensor_dict:
+                    starts_name = 'const_' + node.inputs[1]
+                    ends_name = 'const_' + node.inputs[2]
+
+                    if starts_name not in self.binaries or ends_name not in self.binaries:
                         out_shape = [8,1,1]
                     else:
-                        starts = np.frombuffer(self.binaries[node.inputs[1]], dtype=np.int64)
-                        ends = np.frombuffer(self.binaries[node.inputs[2]], dtype=np.int64)
+                        if self.tensor_types[node.inputs[1]] == 'I064':
+                            npType = np.int64
+                        elif self.tensor_types[node.inputs[1]] == 'I032':
+                            npType = np.int32
+                    
+                        starts = np.frombuffer(self.binaries[starts_name], dtype=npType)
+                        ends = np.frombuffer(self.binaries[ends_name], dtype=npType)
                         if len(node.inputs) < 5:
                             steps = [1,1,1,1]
                         else:
-                            steps = np.frombuffer(self.binaries[node.inputs[4]], dtype=np.int64)
-                        
+                            steps_name = 'const_' + node.inputs[4]
+                            steps = np.frombuffer(self.binaries[steps_name], dtype=npType)
+                         
                         for i in range(len(starts)):
                             dim_count = 0
                             value = starts[i]
@@ -587,8 +606,17 @@ class IrGraph(object):
                     else:
                         raise ValueError("div: Tensor type not supported: " + self.tensor_types[node.inputs[1]])
                     
-                    weight = np.frombuffer(self.binaries[node.inputs[1]], dtype=npType)
-                    self.binaries[node.inputs[1]] = np.reciprocal(weight)
+                    weight = np.frombuffer(self.binaries[node.inputs[1]], dtype=npType, count=1)
+                    rec = np.reciprocal(weight)
+                    tensor_name = 'const_' + output
+                    constant_tensor = IrTensor()
+                    constant_tensor.setName(tensor_name)
+                    constant_tensor.setInfo(self.tensor_types[node.inputs[1]], np.shape(rec))
+                    self.addVariable(constant_tensor)
+                    self.addBinary(tensor_name, rec)
+               
+                    node.inputs[1] = tensor_name
+
                     node.type = 'mul'
                     local = IrTensor()
                     local.setName(output)
@@ -600,7 +628,7 @@ class IrGraph(object):
                     param = node.attr.get('shape')
                     if not param:
                         if self.tensor_dict[node.inputs[1]] in self.locals:
-                            tensor_name = node.inputs[1]
+                            tensor_name = 'const_' + node.inputs[1]
                             param = (self.readBinary(tensor_name))
                         else:
                             param = self.tensor_dict[node.inputs[1]].shape
@@ -638,7 +666,7 @@ class IrGraph(object):
                 elif node.type in ['shape']:
                     input = self.tensor_dict[node.inputs[0]]
                     node.type = 'copy'
-                    tensor_name = 'shape_' + node.inputs[0]
+                    tensor_name = 'const_' + output
                     shape_data = np.array(input.shape)
                     shape_data.astype(np.int64)
           
@@ -682,19 +710,21 @@ class IrGraph(object):
                         tensorType = 'U008'
                     else:
                         raise ValueError("constant: Tensor type not supported: " + tensorType)
-                    #print("after constant = ",tensorType)
+
                     shape = list(value.shape)
                     if len(shape) == 0:
                         shape.append(1)
+                
+                    tensor_name = 'const_' + output
                     constant_tensor = IrTensor()
-                    constant_tensor.setName(output)
+                    constant_tensor.setName(tensor_name)
                     constant_tensor.setInfo(tensorType, shape)
                     self.addVariable(constant_tensor)
-                    self.addBinary(output, value)
+                    self.addBinary(tensor_name, value)
 
                     node.attr.dict_set.remove('value')
                     node.type = 'copy'
-                    node.inputs.append(output)
+                    node.inputs.append(tensor_name)
                     local = IrTensor()
                     local.setName(output)
                     local.setInfo(tensorType, shape)
@@ -724,13 +754,16 @@ class IrGraph(object):
                     else:
                         raise ValueError("constant: Tensor type not supported: " + tensorType)
             
-                    shape = np.frombuffer(self.binaries[node.inputs[0]], dtype=np.int64)
+                    shape_name = 'const_' + node.inputs[0]
+                    shape = np.frombuffer(self.binaries[shape_name], dtype=np.int64)
                     input_value = np.full(shape, value)
+
+                    tensor_name = 'const_' + output
                     constant_tensor = IrTensor()
-                    constant_tensor.setName(output)
+                    constant_tensor.setName(tensor_name)
                     constant_tensor.setInfo(tensorType, shape)
                     self.addVariable(constant_tensor)                    
-                    self.addBinary(output, input_value)
+                    self.addBinary(tensor_name, input_value)
                     node.attr.set('value', value)
                     node.inputs[0] = output
                     node.type = 'copy'
@@ -1487,8 +1520,9 @@ class IrGraph(object):
             for tensor in self.outputs:
                 f.write('output|' + tensor.toString() + '\n')
             for tensor in self.initializers:
-                if tensor.shape != []:
-                    f.write('initializer|' + tensor.toString() + '\n')
+                if tensor.shape == []:
+                    tensor.shape = [1]
+                f.write('initializer|' + tensor.toString() + '\n')
             for tensor in self.locals:
                 f.write('local|' + tensor.toString() + '\n')
             for node in self.nodes:
