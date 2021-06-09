@@ -245,13 +245,21 @@ static vx_status VX_CALLBACK opencl_codegen(
     ERROR_CHECK_STATUS(vxQueryTensor((vx_tensor)parameters[2], VX_TENSOR_DIMS, output_dims, sizeof(output_dims)));
     ERROR_CHECK_STATUS(vxQueryTensor((vx_tensor)parameters[2], VX_TENSOR_STRIDE_OPENCL, output_stride, sizeof(output_stride)));
     */
+    vx_int32 num_elements_per_output;
     vx_int32 num_outputs = 2;
+    vx_int32 total_input_dims = input_dims[0]*input_dims[1]*input_dims[2]*input_dims[3];
+
     if(parameters[2])
     {
         if(parameters[3]) 
             num_outputs = 4;
         else
             num_outputs = 3;
+    }
+
+    if(!parameters[6])          //split equally
+    {
+        num_elements_per_output = total_input_dims/num_outputs;
     }
     strcpy(opencl_kernel_function_name, "split_layer");
 
@@ -291,9 +299,11 @@ static vx_status VX_CALLBACK opencl_codegen(
             "   uint c = get_global_id(0); \n "
             "   uint x = get_global_id(1); \n "
             "   uint y = get_global_id(2); \n "
-            "   int num_outputs = %d; \n"
+            "   int num_elements_per_output = %d; \n"
+            "   int idx; \n"
             "   if(axis == 0) { \n"
-            "       "
+            "       idx = y*out_stride.s2 + x*out_stride.s1 + c*out_stride.s0; \n"
+            
             "   } \n"
             "   else if(axis == 1) { \n"
             "   } \n"
@@ -308,7 +318,7 @@ static vx_status VX_CALLBACK opencl_codegen(
             "   out += out_offset + i; \n"
             "   in += in_offset + old_idx; \n"
             "   *(__global float *)&out[0] = *(__global float *)&in[0];  \n"*/
-            "}\n", opencl_kernel_function_name, (int)num_outputs);
+            "}\n", opencl_kernel_function_name, (int)num_elements_per_output);
         opencl_kernel_code = item;
     }
     return VX_SUCCESS;
