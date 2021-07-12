@@ -407,6 +407,18 @@ VX_API_ENTRY vx_status VX_API_CALL vxSetContextAttribute(vx_context context, vx_
                 status = VX_SUCCESS;
             }
             break;
+#elif ENABLE_HIP
+        case VX_CONTEXT_ATTRIBUTE_AMD_HIP_DEVICE:
+            if (size == sizeof(hipDevice_t)) {
+                if (context->hip_device < 0 && agoGpuHipCreateContext(context, context->hip_device) != VX_SUCCESS) {
+                    status = VX_FAILURE;
+                }
+                else {
+                    *(int *)ptr = context->hip_device_id;
+                    status = VX_SUCCESS;
+                }
+            }
+            break;
 #endif
         default:
             status = VX_ERROR_NOT_SUPPORTED;
@@ -933,8 +945,8 @@ VX_API_ENTRY vx_image VX_API_CALL vxCreateImageFromHandle(vx_context context, vx
                         data->children[i]->u.img.stride_in_bytes = addrs[i].stride_y;
                         data->children[i]->gpu_buffer_offset = 0;
 #if (ENABLE_OPENCL || ENABLE_HIP)
-                    data->children[i]->buffer_sync_flags &= ~AGO_BUFFER_SYNC_FLAG_DIRTY_MASK;
-                    data->children[i]->buffer_sync_flags |= AGO_BUFFER_SYNC_FLAG_DIRTY_BY_COMMIT;
+                        data->children[i]->buffer_sync_flags &= ~AGO_BUFFER_SYNC_FLAG_DIRTY_MASK;
+                        data->children[i]->buffer_sync_flags |= AGO_BUFFER_SYNC_FLAG_DIRTY_BY_COMMIT;
 #endif
                     }
                 }
@@ -3368,6 +3380,14 @@ VX_API_ENTRY vx_status VX_API_CALL vxQueryNode(vx_node node, vx_enum attribute, 
                     status = VX_SUCCESS;
                 }
                 break;
+#elif ENABLE_HIP
+            case VX_NODE_ATTRIBUTE_AMD_HIP_STREAM:
+                if (size == sizeof(hipStream_t)){
+                    AgoGraph * graph = (AgoGraph *)node->ref.scope;
+                    *(hipStream_t *)ptr = graph->hip_stream0;
+                    status = VX_SUCCESS;
+            }
+            break;
 #endif
             default:
                 status = VX_ERROR_NOT_SUPPORTED;

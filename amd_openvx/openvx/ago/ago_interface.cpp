@@ -1932,12 +1932,21 @@ static int agoDataSyncFromGpuToCpu(AgoGraph * graph, AgoNode * node, AgoData * d
             if (dataToSync->buffer_sync_flags & (AGO_BUFFER_SYNC_FLAG_DIRTY_BY_NODE | AGO_BUFFER_SYNC_FLAG_DIRTY_BY_COMMIT)) {
                 int64_t stime = agoGetClockCounter();
                 if (dataToSync->ref.type == VX_TYPE_LUT) {
-                    size_t origin[3] = { 0, 0, 0 };
-                    size_t region[3] = { 256, 1, 1 };
-                    cl_int err = clEnqueueWriteImage(opencl_cmdq, dataToSync->opencl_buffer, CL_TRUE, origin, region, 256, 0, dataToSync->buffer, 0, NULL, NULL);
-                    if (err) {
-                        agoAddLogEntry((vx_reference)graph, VX_FAILURE, "ERROR: clEnqueueWriteImage(lut) => %d\n", err);
-                        return -1;
+                    if (dataToSync->u.lut.type == VX_TYPE_UINT8) {
+                        size_t origin[3] = { 0, 0, 0 };
+                        size_t region[3] = { 256, 1, 1 };
+                        cl_int err = clEnqueueWriteImage(opencl_cmdq, dataToSync->opencl_buffer, CL_TRUE, origin, region, 256, 0, dataToSync->buffer, 0, NULL, NULL);
+                        if (err) {
+                            agoAddLogEntry((vx_reference)graph, VX_FAILURE, "ERROR: clEnqueueWriteImage(lut) => %d\n", err);
+                            return -1;
+                        }
+                    }
+                    else if (dataToSync->u.lut.type == VX_TYPE_INT16) {
+                        cl_int err = clEnqueueWriteBuffer(opencl_cmdq, dataToSync->opencl_buffer, CL_TRUE, dataToSync->gpu_buffer_offset, dataToSync->size, dataToSync->buffer, 0, NULL, NULL);
+                        if (err) {
+                            agoAddLogEntry(NULL, VX_FAILURE, "ERROR: clEnqueueWriteImage(lut) => %d\n", err);
+                            return VX_FAILURE;
+                        }
                     }
                 }
                 else {
@@ -1962,13 +1971,22 @@ static int agoDataSyncFromGpuToCpu(AgoGraph * graph, AgoNode * node, AgoData * d
         else {
             if (dataToSync->buffer_sync_flags & (AGO_BUFFER_SYNC_FLAG_DIRTY_BY_NODE_CL)) {
                 if (dataToSync->ref.type == VX_TYPE_LUT) {
-                    int64_t stime = agoGetClockCounter();
-                    size_t origin[3] = { 0, 0, 0 };
-                    size_t region[3] = { 256, 1, 1 };
-                    cl_int err = clEnqueueReadImage(opencl_cmdq, dataToSync->opencl_buffer, CL_TRUE, origin, region, 256, 0, dataToSync->buffer, 0, NULL, NULL);
-                    if (err) {
-                        agoAddLogEntry((vx_reference)graph, VX_FAILURE, "ERROR: clEnqueueReadImage(lut) => %d\n", err);
-                        return -1;
+                        int64_t stime = agoGetClockCounter();
+                        if (dataToSync->u.lut.type == VX_TYPE_UINT8) {
+                        size_t origin[3] = { 0, 0, 0 };
+                        size_t region[3] = { 256, 1, 1 };
+                        cl_int err = clEnqueueReadImage(opencl_cmdq, dataToSync->opencl_buffer, CL_TRUE, origin, region, 256, 0, dataToSync->buffer, 0, NULL, NULL);
+                        if (err) {
+                            agoAddLogEntry((vx_reference)graph, VX_FAILURE, "ERROR: clEnqueueReadImage(lut) => %d\n", err);
+                            return -1;
+                        }
+                    }
+                    else if (dataToSync->u.lut.type == VX_TYPE_INT16) {
+                        cl_int err = clEnqueueWriteBuffer(opencl_cmdq, dataToSync->opencl_buffer, CL_TRUE, dataToSync->gpu_buffer_offset, dataToSync->size, dataToSync->buffer, 0, NULL, NULL);
+                        if (err) {
+                            agoAddLogEntry(NULL, VX_FAILURE, "ERROR: clEnqueueWriteImage(lut) => %d\n", err);
+                            return VX_FAILURE;
+                        }
                     }
                     dataToSync->buffer_sync_flags |= AGO_BUFFER_SYNC_FLAG_DIRTY_SYNCHED;
                     int64_t etime = agoGetClockCounter();
@@ -2238,27 +2256,30 @@ int agoExecuteGraph(AgoGraph * graph)
         // process GPU nodes at current hierarchical level
         for (auto node = snode; node != enode; node = node->next) {
             if (node->attr_affinity.device_type == AGO_KERNEL_FLAG_DEVICE_GPU) {
+                //opencl_buffer_access_enable |= (node->akernel->opencl_buffer_access_enable ? true : false);
                 bool launched = true;
                 agoPerfProfileEntry(graph, ago_profile_type_launch_begin, &node->ref);
                 agoPerfCaptureStart(&node->perf);
                 // make sure that all input buffers are synched
-                for (vx_uint32 i = 0; i < node->paramCount; i++) {
-                    AgoData * data = node->paramList[i];
-                    if (data &&
-                        (node->parameters[i].direction == VX_INPUT || node->parameters[i].direction == VX_BIDIRECTIONAL))
-                    {
-                        auto dataToSync = (data->ref.type == VX_TYPE_IMAGE && data->u.img.isROI) ? data->u.img.roiMasterImage : data;
-                        if (dataToSync->buffer_sync_flags & (AGO_BUFFER_SYNC_FLAG_DIRTY_BY_NODE | AGO_BUFFER_SYNC_FLAG_DIRTY_BY_COMMIT) &&
-                            dataToSync->opencl_buffer && !(dataToSync->buffer_sync_flags & AGO_BUFFER_SYNC_FLAG_DIRTY_SYNCHED))
+                //if (node->akernel->opencl_buffer_access_enable) {
+                    for (vx_uint32 i = 0; i < node->paramCount; i++) {
+                        AgoData * data = node->paramList[i];
+                        if (data &&
+                            (node->parameters[i].direction == VX_INPUT || node->parameters[i].direction == VX_BIDIRECTIONAL))
                         {
-                            status = agoDirective((vx_reference)dataToSync, VX_DIRECTIVE_AMD_COPY_TO_OPENCL);
-                            if(status != VX_SUCCESS) {
-                                agoAddLogEntry((vx_reference)graph, VX_FAILURE, "ERROR: agoDirective(*,VX_DIRECTIVE_AMD_COPY_TO_OPENCL) failed (%d:%s)\n", status, agoEnum2Name(status));
-                                return status;
+                            auto dataToSync = (data->ref.type == VX_TYPE_IMAGE && data->u.img.isROI) ? data->u.img.roiMasterImage : data;
+                            if (dataToSync->buffer_sync_flags & (AGO_BUFFER_SYNC_FLAG_DIRTY_BY_NODE | AGO_BUFFER_SYNC_FLAG_DIRTY_BY_COMMIT) &&
+                                dataToSync->opencl_buffer && !(dataToSync->buffer_sync_flags & AGO_BUFFER_SYNC_FLAG_DIRTY_SYNCHED))
+                            {
+                                status = agoDirective((vx_reference)dataToSync, VX_DIRECTIVE_AMD_COPY_TO_OPENCL);
+                                if(status != VX_SUCCESS) {
+                                    agoAddLogEntry((vx_reference)graph, VX_FAILURE, "ERROR: agoDirective(*,VX_DIRECTIVE_AMD_COPY_TO_OPENCL) failed (%d:%s)\n", status, agoEnum2Name(status));
+                                    return status;
+                                }
                             }
                         }
                     }
-                }
+                //}
                 if (!node->supernode) {
                     // launch the single node
                     if (agoGpuOclSingleNodeLaunch(graph, node) < 0) {
@@ -2282,10 +2303,22 @@ int agoExecuteGraph(AgoGraph * graph)
                     }
                 }
                 agoPerfProfileEntry(graph, ago_profile_type_launch_end, &node->ref);
+                // mark that node outputs are dirty
+                for (vx_uint32 i = 0; i < node->paramCount; i++) {
+                    AgoData * data = node->paramList[i];
+                    if (data && data->opencl_buffer &&
+                        (node->parameters[i].direction == VX_OUTPUT || node->parameters[i].direction == VX_BIDIRECTIONAL))
+                    {
+                        auto dataToSync = data->u.img.isROI ? data->u.img.roiMasterImage : data;
+                        dataToSync->buffer_sync_flags &= ~AGO_BUFFER_SYNC_FLAG_DIRTY_MASK;
+                        dataToSync->buffer_sync_flags |= (AGO_BUFFER_SYNC_FLAG_DIRTY_BY_NODE | AGO_BUFFER_SYNC_FLAG_DIRTY_BY_COMMIT);
+                    }
+                }
             }
         }
 #elif ENABLE_HIP
         // process GPU nodes at current hierarchical level
+        
         for (auto node = snode; node != enode; node = node->next) {
             if (node->attr_affinity.device_type == AGO_KERNEL_FLAG_DEVICE_GPU) {
                 bool launched = true;

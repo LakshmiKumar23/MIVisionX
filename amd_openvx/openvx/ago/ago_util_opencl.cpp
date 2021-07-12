@@ -34,8 +34,8 @@ static void clDumpBuffer(const char * fileNameFormat, cl_command_queue opencl_cm
     static int dumpBufferCount = 0; dumpBufferCount++;
     char fileName[1024]; sprintf(fileName, fileNameFormat, dumpBufferCount);
     cl_mem opencl_buffer = data->opencl_buffer;
-    cl_uint gpu_buffer_offset = data->gpu_buffer_offset
-    _buffer_offset;
+    cl_uint gpu_buffer_offset = data->gpu_buffer_offset;
+    //_buffer_offset;
     cl_uint size = (cl_uint)0;
     if (data->ref.type == VX_TYPE_IMAGE)
         size = (cl_uint)(data->u.img.stride_in_bytes*data->u.img.height);

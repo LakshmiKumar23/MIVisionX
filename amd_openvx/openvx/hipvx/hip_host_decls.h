@@ -758,7 +758,7 @@ int HipExec_WarpAffine_U8_U8_Nearest_Constant(
         vx_uint32 srcWidth, vx_uint32 srcHeight,
         const vx_uint8 *pHipSrcImage, vx_uint32 srcImageStrideInBytes,
         ago_affine_matrix_t *affineMatrix,
-        vx_uint8 borderValue);
+        vx_uint8 borderValue, vx_rectangle_t rect_valid);
 int HipExec_WarpAffine_U8_U8_Bilinear(
         hipStream_t stream, vx_uint32 dstWidth, vx_uint32 dstHeight,
         vx_uint8 *pHipDstImage, vx_uint32 dstImageStrideInBytes,
@@ -896,8 +896,8 @@ int HipExec_HarrisScore_HVC_HG3_7x7(
         vx_float32 sensitivity, vx_float32 strength_threshold,
         vx_int32 border, vx_float32 normFactor);
 int HipExec_NonMaxSupp_XY_ANY_3x3(
-        hipStream_t stream, vx_uint32 capacityOfList, ago_keypoint_xys_t *pHipDstList,
-        vx_uint32 srcWidth, vx_uint32 srcHeight,
+        hipStream_t stream, vx_uint32 capacityOfList, vx_uint8 *pHipDstList,
+        vx_uint32 dstListOffset, vx_uint32 srcWidth, vx_uint32 srcHeight,
         vx_float32 *pHipSrcImage, vx_uint32 srcImageStrideInBytes);
 
 #endif //MIVISIONX_HIP_HOST_DECLS_H
