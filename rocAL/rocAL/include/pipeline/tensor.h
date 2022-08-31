@@ -64,8 +64,7 @@ public:
     rocALTensorInfo();
 
     //! Initializer constructor with only fields common to all types (Image/ Video / Audio)
-    rocALTensorInfo(unsigned num_of_dims,
-                    std::vector<unsigned> dims,
+    rocALTensorInfo(std::vector<unsigned> dims,
                     RocalMemType mem_type,
                     RocalTensorDataType data_type);
 
