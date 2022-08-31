@@ -32,17 +32,32 @@ THE SOFTWARE.
 #include "exception.h"
 #include "log.h"
 
-
-enum class RocalTensorFormat
+/*! \brief Tensor layouts
+ *
+ * currently supported by Rocal SDK as input/output
+ */
+enum class RocalTensorlayout
 {
     NHWC = 0,
-    NCHW
+    NCHW,
+    NFHWC,
+    NFCHW,
+    NONE
 };
+
+/*! \brief Tensor data type
+ *
+ * currently supported by Rocal SDK as input/output
+ */
 enum class RocalTensorDataType
 {
     FP32 = 0,
-    FP16
+    FP16,
+    UINT8,
+    UINT32,
+    INT32
 };
+
 enum class RocalAffinity
 {
     GPU = 0,
@@ -80,6 +95,21 @@ enum class DecodeMode
     HW_VAAPI = 0,
     CPU = 1
 };
+
+/*! \brief Tensor ROI type
+ *
+ * currently supports following formats
+ */
+enum class RocalROIType
+{
+    XYWH = 0,
+    LTRB
+};
+
+typedef struct
+{
+    unsigned x1, y1, x2, y2;
+} RocalROI;
 
 struct Timing
 {
