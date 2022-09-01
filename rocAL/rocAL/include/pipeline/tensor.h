@@ -64,7 +64,7 @@ public:
     rocALTensorInfo();
 
     //! Initializer constructor with only fields common to all types (Image/ Video / Audio)
-    rocALTensorInfo(std::vector<unsigned> dims,
+    rocALTensorInfo(std::vector<size_t> dims,
                     RocalMemType mem_type,
                     RocalTensorDataType data_type);
 
@@ -116,7 +116,7 @@ public:
         _layout = layout;
         set_max_dims();
     }
-    void set_dims(std::vector<unsigned> &new_dims)
+    void set_dims(std::vector<size_t> &new_dims)
     {
         _data_size = _data_type_size;
         if(_num_of_dims == new_dims.size())
@@ -134,9 +134,9 @@ public:
     void set_color_format(RocalColorFormat color_format) { _color_format = color_format; }
     unsigned num_of_dims() const { return _num_of_dims; }
     unsigned batch_size() const { return _batch_size; }
-    unsigned data_size() const { return _data_size; }
-    std::vector<unsigned> max_dims() const { return _max_dims; }
-    std::vector<unsigned> dims() const { return _dims; }
+    size_t data_size() const { return _data_size; }
+    std::vector<size_t> max_dims() const { return _max_dims; }
+    std::vector<size_t> dims() const { return _dims; }
     RocalMemType mem_type() const { return _mem_type; }
     RocalROIType roi_type() const { return _roi_type; }
     RocalTensorDataType data_type() const { return _data_type; }
@@ -144,7 +144,7 @@ public:
     std::shared_ptr<std::vector<RocalROI>> get_roi() const { return _roi; }
     RocalColorFormat color_format() const {return _color_format; }
     Type type() const { return _type; }
-    unsigned data_type_size()
+    size_t data_type_size()
     {
         _data_type_size = tensor_data_size(_data_type);
         return _data_type_size;
@@ -156,7 +156,7 @@ public:
 private:
     Type _type = Type::UNKNOWN;//!< tensor type, whether is virtual tensor, created from handle or is a regular tensor
     unsigned _num_of_dims;//!< denotes the number of dimensions in the tensor
-    std::vector<unsigned> _dims;//!< denotes the dimensions of the tensor
+    std::vector<size_t> _dims;//!< denotes the dimensions of the tensor
     unsigned _batch_size;//!< the batch size 
     RocalMemType _mem_type;//!< memory type, currently either OpenCL or Host
     RocalROIType _roi_type;//!< ROI type, currently either XYWH or LTRB
@@ -164,9 +164,9 @@ private:
     RocalTensorlayout _layout = RocalTensorlayout::NONE;//!< layout of the tensor
     RocalColorFormat _color_format;//!< color format of the image
     std::shared_ptr<std::vector<RocalROI>> _roi;
-    unsigned _data_type_size = tensor_data_size(_data_type);
-    unsigned _data_size = 0;
-    std::vector<unsigned> _max_dims;//!< stores the the width and height dimensions in the tensor
+    size_t _data_type_size = tensor_data_size(_data_type);
+    size_t _data_size = 0;
+    std::vector<size_t> _max_dims;//!< stores the the width and height dimensions in the tensor
     void reallocate_tensor_roi_buffers();
     bool _is_image = false;
     bool _is_metadata = false;
@@ -210,7 +210,7 @@ public:
     int create_from_handle(vx_context context);
     int create_virtual(vx_context context, vx_graph graph);
     bool is_handle_set() { return (_vx_handle != 0); }
-    void set_dims(std::vector<unsigned> &dims) { _info.set_dims(dims); }
+    void set_dims(std::vector<size_t> &dims) { _info.set_dims(dims); }
 private:
     vx_tensor _vx_handle = nullptr;//!< The OpenVX tensor
     void* _mem_handle = nullptr;//!< Pointer to the tensor's internal buffer (opencl or host)
@@ -222,7 +222,7 @@ private:
 class rocALTensorList
 {
 public:
-    unsigned size() { return _tensor_list.size(); }
+    size_t size() { return _tensor_list.size(); }
     bool empty() { return _tensor_list.empty(); }
     rocALTensor* front() { return _tensor_list.front(); }
     void push_back(rocALTensor * tensor)

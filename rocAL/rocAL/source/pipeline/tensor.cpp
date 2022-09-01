@@ -126,7 +126,7 @@ rocALTensorInfo::rocALTensorInfo() : _type(Type::UNKNOWN),
                                      _data_type(RocalTensorDataType::FP32){}
 
 rocALTensorInfo::rocALTensorInfo(
-    std::vector<unsigned> dims,
+    std::vector<size_t> dims,
     RocalMemType mem_type,
     RocalTensorDataType data_type) : _type(Type::UNKNOWN),
                                      _dims(dims),
@@ -217,12 +217,7 @@ int rocALTensor::create_virtual(vx_context context, vx_graph graph)
 
     _context = context;
 
-    unsigned num_of_dims = _info.num_of_dims();
-    vx_size dims[num_of_dims];
-    for(unsigned i = 0; i < num_of_dims; i++)
-        dims[i] = _info.dims().at(i);
-
-    _vx_handle = vxCreateVirtualTensor(graph, num_of_dims, dims, interpret_tensor_data_type(_info.data_type()), 0);
+    _vx_handle = vxCreateVirtualTensor(graph, _info.num_of_dims(), _info.dims().data(), interpret_tensor_data_type(_info.data_type()), 0);
     vx_status status;
     if ((status = vxGetStatus((vx_reference)_vx_handle)) != VX_SUCCESS)
         THROW("Error: vxCreateVirtualTensor(input:[" + TOSTR(_info.max_dims().at(0)) + "W" + TOSTR(_info.max_dims().at(1)) + "H" + "]): failed " + TOSTR(status))
@@ -249,11 +244,7 @@ int rocALTensor::create_from_handle(vx_context context)
     for(unsigned i = 1; i < num_of_dims; i++)
         stride[i] = stride[i - 1] * _info.dims().at(i - 1);
 
-    vx_size dims[num_of_dims];
-    for(unsigned i = 0; i < num_of_dims; i++)
-        dims[i] = _info.dims().at(i);
-
-    _vx_handle = vxCreateTensorFromHandle(_context, num_of_dims, dims, tensor_data_type, 0, stride, ptr, vx_mem_type(_info._mem_type));
+    _vx_handle = vxCreateTensorFromHandle(_context, _info.num_of_dims(), _info.dims().data(), tensor_data_type, 0, stride, ptr, vx_mem_type(_info._mem_type));
     vx_status status;
     if ((status = vxGetStatus((vx_reference)_vx_handle)) != VX_SUCCESS)
         THROW("Error: vxCreateTensorFromHandle(input: failed " + TOSTR(status))
@@ -268,14 +259,9 @@ int rocALTensor::create(vx_context context)
 
     _context = context;
 
-    unsigned num_of_dims = _info.num_of_dims();
-    vx_size dims[num_of_dims];
-    for(unsigned i = 0; i < num_of_dims; i++)
-        dims[i] = _info.dims().at(i);
-
     vx_status status;
     vx_enum tensor_data_type = interpret_tensor_data_type(_info.data_type());
-    _vx_handle = vxCreateTensor(context, num_of_dims, dims, tensor_data_type, 0);
+    _vx_handle = vxCreateTensor(context, _info.num_of_dims(), _info.dims().data(), tensor_data_type, 0);
     if ((status = vxGetStatus((vx_reference)_vx_handle)) != VX_SUCCESS)
         THROW("Error: vxCreateTensor(input: failed " + TOSTR(status))
     _info._type = rocALTensorInfo::Type::REGULAR;
