@@ -235,6 +235,7 @@ int rocALTensor::create_from_handle(vx_context context)
     }
 
     _context = context;
+
     vx_enum tensor_data_type = interpret_tensor_data_type(_info.data_type());
     unsigned num_of_dims = _info.num_of_dims();
     vx_size stride[num_of_dims];

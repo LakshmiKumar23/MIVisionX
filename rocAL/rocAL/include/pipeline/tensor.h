@@ -47,7 +47,6 @@ vx_enum vx_mem_type(RocalMemType mem);
 vx_size tensor_data_size(RocalTensorDataType data_type);
 
 /*! \brief Holds the information about a rocALTensor */
-
 class rocALTensorInfo
 {
 public:
@@ -59,6 +58,7 @@ public:
         VIRTUAL = 1,
         HANDLE  = 2
     };
+    
     // Default constructor
     /*! initializes memory type to host and dimension as empty vector*/
     rocALTensorInfo();
@@ -108,7 +108,7 @@ public:
         {
             _max_dims.resize(2); // Since 2 values will be stored in the vector
             _max_dims[0] = _dims.at(1);
-            _max_dims[1] = _dims.at(2);
+            _max_dims[1] = _num_of_dims > 2 ? _dims.at(2) : 0;
         }   
     }
     void set_tensor_layout(RocalTensorlayout layout)
@@ -182,7 +182,6 @@ class rocALTensor
 {
 public:
     int swap_handle(void* handle);
-
     const rocALTensorInfo& info() { return _info; }
     //! Default constructor
     rocALTensor() = delete;
