@@ -45,12 +45,6 @@ enum class RocalTensorlayout
     NONE
 };
 
-enum class RocalTensorFormat
-{
-    NHWC = 0,
-    NCHW
-};
-
 /*! \brief Tensor data type
  *
  * currently supported by Rocal SDK as input/output

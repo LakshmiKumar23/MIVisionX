@@ -78,9 +78,9 @@ public:
     }
     void set_max_dims()
     {
-        _max_dims.resize(3); // TODO - change
         if(_layout != RocalTensorlayout::NONE)
         {
+            _max_dims.resize(2); // Since 2 values will be stored in the vector
             _is_image = true;
             if(_layout == RocalTensorlayout::NHWC)
             {
@@ -96,18 +96,17 @@ public:
             {
                 _max_dims[0] = _dims.at(3);
                 _max_dims[1] = _dims.at(2);
-                _max_dims[2] = _dims.at(1);
             }
             else if(_layout == RocalTensorlayout::NFCHW)
             {
                 _max_dims[0] = _dims.at(4);
                 _max_dims[1] = _dims.at(3);
-                _max_dims[2] = _dims.at(1);
             }
             reallocate_tensor_roi_buffers();
         }
         else if(!_is_metadata) // For audio
         {
+            _max_dims.resize(2); // Since 2 values will be stored in the vector
             _max_dims[0] = _dims.at(1);
             _max_dims[1] = _dims.at(2);
         }   
