@@ -100,11 +100,9 @@ void rocALTensorInfo::reallocate_tensor_roi_buffers()
 {
     _roi = std::make_shared<std::vector<RocalROI>>(_batch_size);
 
-    if(_roi->size() > 0)
-        _roi->clear();
+    if(_roi->size()) _roi->clear();
     _roi->resize(_batch_size);
-    if(_is_image)
-    {
+    if(_is_image) {
         for (unsigned i = 0; i < _batch_size; i++)
         {
             _roi->at(i).x1 = 0;
@@ -112,9 +110,7 @@ void rocALTensorInfo::reallocate_tensor_roi_buffers()
             _roi->at(i).x2 = _max_dims.at(0);
             _roi->at(i).y2 = _max_dims.at(1);
         }
-    }
-    else
-    {
+    } else {
         // TODO - For other tensor types
     }
 }
@@ -123,7 +119,7 @@ rocALTensorInfo::rocALTensorInfo() : _type(Type::UNKNOWN),
                                      _num_of_dims(0),
                                      _dims({}),
                                      _mem_type(RocalMemType::HOST),
-                                     _data_type(RocalTensorDataType::FP32){}
+                                     _data_type(RocalTensorDataType::FP32) {}
 
 rocALTensorInfo::rocALTensorInfo(
     std::vector<size_t> dims,
@@ -145,8 +141,7 @@ rocALTensorInfo::rocALTensorInfo(
 
 void rocALTensor::update_tensor_roi(const std::vector<uint32_t> &width, const std::vector<uint32_t> &height)
 {
-    if(_info.is_image())
-    {
+    if(_info.is_image()) {
         auto max_dims = _info.max_dims();
         unsigned max_width = max_dims.at(0);
         unsigned max_height = max_dims.at(1);
@@ -159,22 +154,16 @@ void rocALTensor::update_tensor_roi(const std::vector<uint32_t> &width, const st
 
         for (unsigned i = 0; i < info().batch_size(); i++)
         {
-            if (width[i] > max_width)
-            {
+            if (width[i] > max_width) {
                 WRN("Given ROI width is larger than buffer width for tensor[" + TOSTR(i) + "] " + TOSTR(width[i]) + " > " + TOSTR(max_width))
                 _info.get_roi()->at(i).x2 = max_width;
-            }
-            else
-            {
+            } else {
                 _info.get_roi()->at(i).x2 = width[i];
             }
-            if (height[i] > max_height)
-            {
+            if (height[i] > max_height) {
                 WRN("Given ROI height is larger than buffer with for tensor[" + TOSTR(i) + "] " + TOSTR(height[i]) + " > " + TOSTR(max_height))
                 _info.get_roi()->at(i).y2 = max_height;
-            }
-            else
-            {
+            } else {
                 _info.get_roi()->at(i).y2 = height[i];
             }
         }
@@ -212,11 +201,12 @@ rocALTensor::rocALTensor(const rocALTensorInfo &tensor_info) : _info(tensor_info
 
 int rocALTensor::create_virtual(vx_context context, vx_graph graph)
 {
-    if (_vx_handle)
+    if (_vx_handle) {
+        WRN("Tensor object create method is already called ")
         return -1;
+    }
 
     _context = context;
-
     _vx_handle = vxCreateVirtualTensor(graph, _info.num_of_dims(), _info.dims().data(), interpret_tensor_data_type(_info.data_type()), 0);
     vx_status status;
     if ((status = vxGetStatus((vx_reference)_vx_handle)) != VX_SUCCESS)
@@ -228,14 +218,12 @@ int rocALTensor::create_virtual(vx_context context, vx_graph graph)
 
 int rocALTensor::create_from_handle(vx_context context)
 {
-    if (_vx_handle)
-    {
+    if (_vx_handle) {
         WRN("Tensor object create method is already called ")
         return -1;
     }
 
     _context = context;
-
     vx_enum tensor_data_type = interpret_tensor_data_type(_info.data_type());
     unsigned num_of_dims = _info.num_of_dims();
     vx_size stride[num_of_dims];
@@ -255,11 +243,12 @@ int rocALTensor::create_from_handle(vx_context context)
 
 int rocALTensor::create(vx_context context)
 {
-    if (_vx_handle)
+    if (_vx_handle) {
+        WRN("Tensor object create method is already called ")
         return -1;
+    }
 
     _context = context;
-
     vx_status status;
     vx_enum tensor_data_type = interpret_tensor_data_type(_info.data_type());
     _vx_handle = vxCreateTensor(context, _info.num_of_dims(), _info.dims().data(), tensor_data_type, 0);
@@ -275,8 +264,7 @@ unsigned rocALTensor::copy_data(cl_command_queue queue, unsigned char *user_buff
     if (_info._type != rocALTensorInfo::Type::HANDLE)
         return 0;
 
-    if (_info._mem_type == RocalMemType::OCL)
-    {
+    if (_info._mem_type == RocalMemType::OCL) {
         cl_int status;
         if ((status = clEnqueueReadBuffer(queue,
                                           (cl_mem)_mem_handle,
@@ -284,11 +272,10 @@ unsigned rocALTensor::copy_data(cl_command_queue queue, unsigned char *user_buff
                                           0,
                                           _info.data_size(),
                                           user_buffer,
-                                          0, nullptr, nullptr)) != CL_SUCCESS)
+                                          0, nullptr, nullptr)) != CL_SUCCESS)  {
             THROW("clEnqueueReadBuffer failed: " + TOSTR(status))
-    }
-    else
-    {
+        }
+    } else {
         memcpy(user_buffer, _mem_handle, _info.data_size());
     }
     return 0;
@@ -299,20 +286,16 @@ unsigned rocALTensor::copy_data(hipStream_t stream, void* host_memory, bool sync
     if(_info._type != rocALTensorInfo::Type::HANDLE)
         return 0;
 
-    if (_info._mem_type == RocalMemType::HIP)
-    {
+    if (_info._mem_type == RocalMemType::HIP) {
         // copy from device to host
         hipError_t status;
         if ((status = hipMemcpyDtoHAsync((void *)host_memory, _mem_handle, _info.data_size(), stream)))
             THROW("copy_data::hipMemcpyDtoH failed: " + TOSTR(status))
-        if (sync)
-        {
+        if (sync) {
             if ((status =hipStreamSynchronize(stream)))
                 THROW("copy_data::hipStreamSynchronize failed: " + TOSTR(status))
         }
-    }
-    else
-    {
+    } else {
         memcpy(host_memory, _mem_handle, _info.data_size());
     }
     return 0;
@@ -325,8 +308,7 @@ unsigned rocALTensor::copy_data(void* user_buffer)
         return 0;
 
 #if ENABLE_HIP
-    if (_info._mem_type == RocalMemType::HIP)
-    {
+    if (_info._mem_type == RocalMemType::HIP) {
         // copy from device to host
         hipError_t status;
         if ((status = hipMemcpyDtoH((void *)user_buffer, _mem_handle, _info.data_size())))
@@ -344,8 +326,7 @@ unsigned rocALTensor::copy_data(void* user_buffer)
 int rocALTensor::swap_handle(void *handle)
 {
     vx_status status;
-    if ((status = vxSwapTensorHandle(_vx_handle, handle, nullptr)) != VX_SUCCESS)
-    {
+    if ((status = vxSwapTensorHandle(_vx_handle, handle, nullptr)) != VX_SUCCESS) {
         ERR("Swap handles failed for tensor" + TOSTR(status));
         return -1;
     }

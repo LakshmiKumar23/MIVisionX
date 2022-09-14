@@ -47,8 +47,7 @@ vx_enum vx_mem_type(RocalMemType mem);
 vx_size tensor_data_size(RocalTensorDataType data_type);
 
 /*! \brief Holds the information about a rocALTensor */
-class rocALTensorInfo
-{
+class rocALTensorInfo {
 public:
     friend class rocALTensor;
     enum class Type
@@ -78,34 +77,22 @@ public:
     }
     void set_max_dims()
     {
-        if(_layout != RocalTensorlayout::NONE)
-        {
+        if(_layout != RocalTensorlayout::NONE) {
             _max_dims.resize(2); // Since 2 values will be stored in the vector
             _is_image = true;
-            if(_layout == RocalTensorlayout::NHWC)
-            {
+            if(_layout == RocalTensorlayout::NHWC) {
                 _max_dims[0] = _dims.at(2);
                 _max_dims[1] = _dims.at(1);
-            }
-            else if(_layout == RocalTensorlayout::NCHW)
-            {
+            } else if(_layout == RocalTensorlayout::NCHW || _layout == RocalTensorlayout::NFHWC) {
                 _max_dims[0] = _dims.at(3);
                 _max_dims[1] = _dims.at(2);
-            }
-            else if(_layout == RocalTensorlayout::NFHWC)
-            {
-                _max_dims[0] = _dims.at(3);
-                _max_dims[1] = _dims.at(2);
-            }
-            else if(_layout == RocalTensorlayout::NFCHW)
-            {
+            } else if(_layout == RocalTensorlayout::NFCHW) {
                 _max_dims[0] = _dims.at(4);
                 _max_dims[1] = _dims.at(3);
             }
             reallocate_tensor_roi_buffers();
         }
-        else if(!_is_metadata) // For audio
-        {
+        else if(!_is_metadata) { // For audio
             _max_dims.resize(2); // Since 2 values will be stored in the vector
             _max_dims[0] = _dims.at(1);
             _max_dims[1] = _num_of_dims > 2 ? _dims.at(2) : 0;
@@ -119,17 +106,16 @@ public:
     void set_dims(std::vector<size_t> &new_dims)
     {
         _data_size = _data_type_size;
-        if(_num_of_dims == new_dims.size())
-        {
+        if(_num_of_dims == new_dims.size()) {
             for(unsigned i = 0; i < _num_of_dims; i++)
             {
                 _dims.at(i) = new_dims[i];
                 _data_size *= new_dims[i];
             }
             set_max_dims();
-        }
-        else
+        } else {
             THROW("The size of number of dimensions does not match with the dimensions of existing tensor")
+        }
     }
     void set_color_format(RocalColorFormat color_format) { _color_format = color_format; }
     unsigned num_of_dims() const { return _num_of_dims; }
@@ -178,8 +164,7 @@ bool operator==(const rocALTensorInfo& rhs, const rocALTensorInfo& lhs);
 * Keeps the information about the tensor that can be queried using OVX API as well,
 * but for simplicity and ease of use, they are kept in separate fields
 */
-class rocALTensor
-{
+class rocALTensor {
 public:
     int swap_handle(void* handle);
     const rocALTensorInfo& info() { return _info; }
@@ -218,8 +203,7 @@ private:
 };
 
 /*! \brief Contains a list of rocALTensors */
-class rocALTensorList
-{
+class rocALTensorList {
 public:
     size_t size() { return _tensor_list.size(); }
     bool empty() { return _tensor_list.empty(); }

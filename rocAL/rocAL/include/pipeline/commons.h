@@ -93,7 +93,7 @@ enum class RocalMemType
 enum class DecodeMode
 {
     HW_VAAPI = 0,
-    CPU = 1
+    CPU
 };
 
 /*! \brief Tensor ROI type
