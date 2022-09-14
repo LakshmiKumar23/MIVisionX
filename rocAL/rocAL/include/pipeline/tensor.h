@@ -52,10 +52,10 @@ vx_enum vx_mem_type(RocalMemType mem);
  */
 vx_size tensor_data_size(RocalTensorDataType data_type);
 
-/*! \brief Holds the information about a rocALTensor */
-class rocALTensorInfo {
+/*! \brief Holds the information about a rocalTensor */
+class rocalTensorInfo {
 public:
-    friend class rocALTensor;
+    friend class rocalTensor;
     enum class Type {
         UNKNOWN = -1,
         REGULAR = 0,
@@ -65,10 +65,10 @@ public:
 
     // Default constructor
     /*! initializes memory type to host and dimension as empty vector*/
-    rocALTensorInfo();
+    rocalTensorInfo();
 
     //! Initializer constructor with only fields common to all types (Image/ Video / Audio)
-    rocALTensorInfo(std::vector<size_t> dims, RocalMemType mem_type,
+    rocalTensorInfo(std::vector<size_t> dims, RocalMemType mem_type,
                     RocalTensorDataType data_type);
 
     // Setting properties required for Image / Video
@@ -158,17 +158,17 @@ private:
     bool _is_metadata = false;
 };
 
-bool operator==(const rocALTensorInfo& rhs, const rocALTensorInfo& lhs);
+bool operator==(const rocalTensorInfo& rhs, const rocalTensorInfo& lhs);
 /*! \brief Holds an OpenVX tensor and it's info
 * Keeps the information about the tensor that can be queried using OVX API as
 * well, but for simplicity and ease of use, they are kept in separate fields
 */
-class rocALTensor {
+class rocalTensor {
 public:
     int swap_handle(void* handle);
-    const rocALTensorInfo& info() { return _info; }
+    const rocalTensorInfo& info() { return _info; }
     //! Default constructor
-    rocALTensor() = delete;
+    rocalTensor() = delete;
     void* buffer() { return _mem_handle; }
     vx_tensor handle() { return _vx_handle; }
     vx_context context() { return _context; }
@@ -182,10 +182,10 @@ public:
     unsigned copy_data(void* user_buffer);
     //! Default destructor
     /*! Releases the OpenVX Tensor object */
-    ~rocALTensor();
+    ~rocalTensor();
 
     //! Constructor accepting the tensor information as input
-    explicit rocALTensor(const rocALTensorInfo& tensor_info);
+    explicit rocalTensor(const rocalTensorInfo& tensor_info);
     int create(vx_context context);
     void update_tensor_roi(const std::vector<uint32_t>& width, const std::vector<uint32_t>& height);
     void reset_tensor_roi() { _info.reallocate_tensor_roi_buffers(); }
@@ -199,17 +199,17 @@ public:
 private:
     vx_tensor _vx_handle = nullptr;  //!< The OpenVX tensor
     void* _mem_handle = nullptr;  //!< Pointer to the tensor's internal buffer (opencl or host)
-    rocALTensorInfo _info;  //!< The structure holding the info related to the stored OpenVX tensor
+    rocalTensorInfo _info;  //!< The structure holding the info related to the stored OpenVX tensor
     vx_context _context = nullptr;
 };
 
-/*! \brief Contains a list of rocALTensors */
-class rocALTensorList {
+/*! \brief Contains a list of rocalTensors */
+class rocalTensorList {
 public:
     size_t size() { return _tensor_list.size(); }
     bool empty() { return _tensor_list.empty(); }
-    rocALTensor* front() { return _tensor_list.front(); }
-    void push_back(rocALTensor* tensor) {
+    rocalTensor* front() { return _tensor_list.front(); }
+    void push_back(rocalTensor* tensor) {
         _tensor_list.emplace_back(tensor);
         _tensor_data_size.emplace_back(tensor->info().data_size());
     }
@@ -217,11 +217,11 @@ public:
     void release() {
         for (auto& tensor : _tensor_list) delete tensor;
     }
-    rocALTensor* operator[](size_t index) { return _tensor_list[index]; }
-    rocALTensor* at(size_t index) { return _tensor_list[index]; }
-    void operator=(rocALTensorList& other) {
+    rocalTensor* operator[](size_t index) { return _tensor_list[index]; }
+    rocalTensor* at(size_t index) { return _tensor_list[index]; }
+    void operator=(rocalTensorList& other) {
         for (unsigned idx = 0; idx < other.size(); idx++) {
-            auto* new_tensor = new rocALTensor(other[idx]->info());
+            auto* new_tensor = new rocalTensor(other[idx]->info());
             if (new_tensor->create_from_handle(other[idx]->context()) != 0)
                 THROW("Cannot create the tensor from handle")
             this->push_back(new_tensor);
@@ -229,6 +229,6 @@ public:
     }
 
 private:
-    std::vector<rocALTensor*> _tensor_list;
+    std::vector<rocalTensor*> _tensor_list;
     std::vector<size_t> _tensor_data_size;
 };
