@@ -338,11 +338,6 @@ int model_setup(engine::kind engine_kind, const char *binaryFilename, const char
     // Allocate initializers
 """% (' * '.join([str(v) for v in tensor.shape]), ' * '.join([str(v) for v in tensor.shape])))
         for tensor in graph.initializers:
-            i = 0
-            while i < len(tensor.shape):
-                if tensor.shape[-1] == 1:
-                    del tensor.shape[-1]
-                i += 1
             f.write( \
 """    memory::dims %s_dims = {%s};
 """%(tensor.name, ', '.join([str(v) for v in tensor.shape])))
@@ -351,11 +346,6 @@ int model_setup(engine::kind engine_kind, const char *binaryFilename, const char
     // Allocate locals
 """)
         for tensor in graph.locals:
-            j = 0
-            while j < len(tensor.shape):
-                if tensor.shape[-1] == 1:
-                    del tensor.shape[-1]
-                j += 1
             f.write( \
 """    memory::dims %s_dims = {%s};
 """%(tensor.name, ', '.join([str(v) for v in tensor.shape])))
@@ -387,7 +377,7 @@ int model_setup(engine::kind engine_kind, const char *binaryFilename, const char
                 f.write( \
 """
     // Create memory that describes data layout in the buffers
-    auto %s_user_weights_memory = memory({{%s_dims}, dt::f32, tag::oihw}, eng);
+    auto %s_user_weights_memory = memory({{%s_dims}, dt::f32, tag::hwcn}, eng);
     write_to_zendnn_memory(%s.data(), %s_user_weights_memory);
 """%(node.outputs[0], node.inputs[1], node.inputs[1], node.outputs[0]))
                 if len(node.inputs) == 3:
@@ -618,7 +608,7 @@ int model_setup(engine::kind engine_kind, const char *binaryFilename, const char
     auto %s_prim_desc = inner_product_forward::primitive_desc(%s_desc, eng);
 """%(layerNumber, layerNumber, node.inputs[1], node.inputs[1], node.inputs[1], 
     node.inputs[1], node.inputs[2], node.inputs[2], node.inputs[2], node.inputs[2], 
-    node.inputs[1], node.inputs[1], 'oihw' if len(weights_shape) == 4 else 'nc', 
+    node.inputs[1], node.inputs[1], 'hwcn' if len(weights_shape) == 4 else 'nc', 
     node.inputs[1], node.inputs[1], node.inputs[2],
     node.inputs[2], node.inputs[2], node.inputs[2], node.inputs[1], node.inputs[1], 
     node.inputs[2], node.inputs[2], node.outputs[0], node.outputs[0], node.outputs[0], 
