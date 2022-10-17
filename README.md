@@ -443,7 +443,7 @@ Review all notable [changes](CHANGELOG.md#changelog) with the latest release
 * RPP - [0.98](https://github.com/GPUOpen-ProfessionalCompute-Libraries/rpp/releases/tag/0.98)
 * FFMPEG - [n4.4.2](https://github.com/FFmpeg/FFmpeg/releases/tag/n4.4.2)
 * Dependencies for all the above packages
-* MIVisionX Setup Script - `V2.3.8`
+* MIVisionX Setup Script - `V2.3.9`
 
 ### Known issues
 
