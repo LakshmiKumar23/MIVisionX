@@ -1,0 +1,16 @@
+import vx_amd_migraphx
+import vx_nn
+
+data input = image:416,416,RGB2
+read input /home/svcbuild/work/AMDMIGraphX/examples/vision/python_yolov4/utilities/input.jpg
+data a = scalar:FLOAT32,1.0
+data b = scalar:FLOAT32,0.0
+data reverse_channel_order = scalar:BOOL,0
+data image_tensor = tensor:4,{416,416,3,1},VX_TYPE_FLOAT32,0
+node com.amd.nn_extension.convert_image_to_tensor input image_tensor a b reverse_channel_order
+
+data model = scalar:STRING,"/home/svcbuild/onnx_models/yolov4/yolov4.onnx"
+data output_tensor = tensor:2,{10,1},VX_TYPE_FLOAT32,0
+
+node com.amd.amd_migraphx_node model image_tensor output_tensor
+write output_tensor out_mnist.f32
