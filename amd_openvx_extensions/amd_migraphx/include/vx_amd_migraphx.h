@@ -19,7 +19,9 @@ extern "C" {
  * \returns A node reference <tt>\ref vx_node</tt>. Any possible errors preventing a
  * successful creation should be checked using <tt>\ref vxGetStatus</tt>.
  */
-VX_API_ENTRY vx_node VX_API_CALL amdMIGraphXnode(vx_graph graph, const vx_char *path, vx_tensor input, vx_tensor output, vx_bool fp16q = false, vx_bool int8q = false);
+VX_API_ENTRY vx_node VX_API_CALL amdMIGraphXnode(vx_graph graph, const vx_char *path, 
+    vx_tensor input, vx_tensor output1, vx_bool fp16q = false, vx_bool int8q = false, 
+    vx_tensor output2 = NULL, vx_tensor output3 = NULL);
 
 #ifdef  __cplusplus
 }

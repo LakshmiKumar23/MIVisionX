@@ -69,9 +69,10 @@ int main(int argc, char **argv) {
     // initialize variables
     vx_tensor input_tensor, output_tensor;
     vx_size input_num_of_dims = 4;
-    vx_size input_dims[4] = {batch_size, 416, 416, 3}; //input dimensions for the resnet50 model
+    vx_size input_dims[4] = {batch_size, 416, 416, 3}; //input dimensions for the yoloV4 model
     vx_size output_num_of_dims = 5;
-    vx_size output_dims[5] = {batch_size, 13, 13, 3, 85}; //output dimensions for the resnet50 model
+    vx_size output_dims_1[5] = {batch_size, 13, 13, 3, 85}, output_dims_2[5] = {batch_size, 13, 13, 3, 85}, 
+    output_dims_3[5] = {batch_size, 13, 13, 3, 85}; //output dimensions for the yoloV4 model
     vx_size stride[4];
     vx_map_id map_id;
     void *ptr = nullptr;
@@ -87,13 +88,13 @@ int main(int argc, char **argv) {
     auto in_time_t = std::chrono::system_clock::to_time_t(now);
     std::stringstream datetime;
     datetime << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d-%X");
-    std::string date = "../results-" + datetime.str();
+    std::string date = "/home/svcbuild/work/lk/MIVisionX/tests/amd_migraphx_tests/yoloV4/results-" + datetime.str();
     if (mkdir(date.c_str(), 0777) == -1)
         cerr << "Error, cannot create results folder:  " << strerror(errno) << endl;
 
     //imagenet label file
     std::string labelText[1000];
-    std::string labelFileName = ("../coco.names");
+    std::string labelFileName = ("/home/svcbuild/work/lk/MIVisionX/tests/amd_migraphx_tests/yoloV4/coco.names");
 
     std::string line;
     std::ifstream out(labelFileName);
