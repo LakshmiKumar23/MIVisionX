@@ -67,12 +67,12 @@ int main(int argc, char **argv) {
     ERROR_CHECK_OBJECT(graph);
 
     // initialize variables
-    vx_tensor input_tensor, output_tensor;
+    vx_tensor input_tensor, output_tensor1, output_tensor2, output_tensor3;
     vx_size input_num_of_dims = 4;
     vx_size input_dims[4] = {batch_size, 416, 416, 3}; //input dimensions for the yoloV4 model
     vx_size output_num_of_dims = 5;
-    vx_size output_dims_1[5] = {batch_size, 13, 13, 3, 85}, output_dims_2[5] = {batch_size, 13, 13, 3, 85}, 
-    output_dims_3[5] = {batch_size, 13, 13, 3, 85}; //output dimensions for the yoloV4 model
+    vx_size output_dims1[5] = {batch_size, 13, 13, 3, 85}, output_dims2[5] = {batch_size, 26, 26, 3, 85}, 
+    output_dims3[5] = {batch_size, 52, 52, 3, 85}; //output dimensions for the yoloV4 model
     vx_size stride[4];
     vx_map_id map_id;
     void *ptr = nullptr;
@@ -110,7 +110,9 @@ int main(int argc, char **argv) {
     out.close();
 
     input_tensor = vxCreateTensor(context, input_num_of_dims, input_dims, VX_TYPE_FLOAT32, 0);
-    output_tensor = vxCreateTensor(context, output_num_of_dims, output_dims, VX_TYPE_FLOAT32, 0);
+    output_tensor1 = vxCreateTensor(context, output_num_of_dims, output_dims1, VX_TYPE_FLOAT32, 0);
+    output_tensor2 = vxCreateTensor(context, output_num_of_dims, output_dims2, VX_TYPE_FLOAT32, 0);
+    output_tensor3 = vxCreateTensor(context, output_num_of_dims, output_dims3, VX_TYPE_FLOAT32, 0);
     int count = input_dims[0] * input_dims[1] * input_dims[2] * input_dims[3];
     
     ERROR_CHECK_STATUS(vxMapTensorPatch(input_tensor, input_num_of_dims, nullptr, nullptr, &map_id, stride,
@@ -219,13 +221,28 @@ int main(int argc, char **argv) {
 
     ERROR_CHECK_STATUS(vxLoadKernels(context, "vx_amd_migraphx"));
 
-    vx_node node = amdMIGraphXnode(graph, modelFileName.c_str(), input_tensor, output_tensor);
+    vx_node node = amdMIGraphXnode(graph, modelFileName.c_str(), input_tensor, output_tensor1, 
+                false, false, output_tensor2, output_tensor3);
     ERROR_CHECK_OBJECT(node);
 
     ERROR_CHECK_STATUS(vxVerifyGraph(graph));
     ERROR_CHECK_STATUS(vxProcessGraph(graph));
 
-    status = vxMapTensorPatch(output_tensor, output_num_of_dims, nullptr, nullptr, &map_id, stride,
+ /*   status = vxMapTensorPatch(output_tensor1, output_num_of_dims, nullptr, nullptr, &map_id, stride,
+        (void **)&ptr, VX_READ_ONLY, VX_MEMORY_TYPE_HOST);
+    if (status) {
+        std::cerr << "ERROR: vxMapTensorPatch() failed for output tensor" << std::endl;
+        return status;
+    }
+
+    status = vxMapTensorPatch(output_tensor2, output_num_of_dims, nullptr, nullptr, &map_id, stride,
+        (void **)&ptr, VX_READ_ONLY, VX_MEMORY_TYPE_HOST);
+    if (status) {
+        std::cerr << "ERROR: vxMapTensorPatch() failed for output tensor" << std::endl;
+        return status;
+    }
+
+    status = vxMapTensorPatch(output_tensor3, output_num_of_dims, nullptr, nullptr, &map_id, stride,
         (void **)&ptr, VX_READ_ONLY, VX_MEMORY_TYPE_HOST);
     if (status) {
         std::cerr << "ERROR: vxMapTensorPatch() failed for output tensor" << std::endl;
@@ -245,17 +262,31 @@ int main(int argc, char **argv) {
         outputFile << i + 1 << "," << final_argmax_result << "," << output_buf[final_argmax_result] << "," << output_label.c_str() << "\n";
     }
     outputFile.close();
-    status = vxUnmapTensorPatch(output_tensor, map_id);
+    status = vxUnmapTensorPatch(output_tensor1, map_id);
+    if(status) {
+        std::cerr << "ERROR: vxUnmapTensorPatch() failed for output_tensor1" << std::endl;
+        return status;
+    }
+
+    status = vxUnmapTensorPatch(output_tensor2, map_id);
+    if(status) {
+        std::cerr << "ERROR: vxUnmapTensorPatch() failed for output_tensor2" << std::endl;
+        return status;
+    }
+
+    status = vxUnmapTensorPatch(output_tensor3, map_id);
     if(status) {
         std::cerr << "ERROR: vxUnmapTensorPatch() failed for output_tensor" << std::endl;
         return status;
     }
-
+*/
     // release resources
     ERROR_CHECK_STATUS(vxReleaseNode(&node));
     ERROR_CHECK_STATUS(vxReleaseGraph(&graph));
     ERROR_CHECK_STATUS(vxReleaseTensor(&input_tensor));
-    ERROR_CHECK_STATUS(vxReleaseTensor(&output_tensor));
+    ERROR_CHECK_STATUS(vxReleaseTensor(&output_tensor1));
+    ERROR_CHECK_STATUS(vxReleaseTensor(&output_tensor2));
+    ERROR_CHECK_STATUS(vxReleaseTensor(&output_tensor3));
     ERROR_CHECK_STATUS(vxReleaseContext(&context));
     return 0;
 }

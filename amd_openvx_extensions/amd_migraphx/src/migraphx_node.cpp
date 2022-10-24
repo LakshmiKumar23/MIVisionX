@@ -131,7 +131,7 @@ static vx_status VX_CALLBACK amd_migraphx_node_initialize(vx_node node, const vx
                 expectedTensorDimsInv << outputDims2[out_num_dims - 1 - i] << " ";
             }
             delete data;
-            return ERRMSG(VX_ERROR_INVALID_VALUE, "the output tensor dimension passed to the node is [%s] which is wrong. It must be either [%s] or [%s]. \n",
+            return ERRMSG(VX_ERROR_INVALID_VALUE, "the second output tensor dimension passed to the node is [%s] which is wrong. It must be either [%s] or [%s]. \n",
                 tensorDims.str().c_str(), expectedTensorDims.str().c_str(), expectedTensorDimsInv.str().c_str());
         }
 
@@ -139,12 +139,12 @@ static vx_status VX_CALLBACK amd_migraphx_node_initialize(vx_node node, const vx
     }
 
     if (parameters[6]) {
-        auto output3 = param_shapes.names().at(1);
+        auto output3 = param_shapes.names().at(2);
         std::vector<size_t> outputDims3 = param_shapes[output3].lengths();
         ERROR_CHECK_STATUS(vxQueryTensor((vx_tensor)parameters[6], VX_TENSOR_NUMBER_OF_DIMS, &out_num_dims, sizeof(out_num_dims)));
         if (out_num_dims != outputDims3.size()) {
             delete data;
-            return ERRMSG(VX_ERROR_INVALID_VALUE, "the output dimension of the second output tensor is %zu (should be %zu)\n", out_num_dims, outputDims3.size());
+            return ERRMSG(VX_ERROR_INVALID_VALUE, "the output dimension of the third output tensor is %zu (should be %zu)\n", out_num_dims, outputDims3.size());
         }
 
         ERROR_CHECK_STATUS(vxQueryTensor((vx_tensor)parameters[6], VX_TENSOR_DIMS, output_dims, sizeof(output_dims)));
@@ -169,7 +169,7 @@ static vx_status VX_CALLBACK amd_migraphx_node_initialize(vx_node node, const vx
                 expectedTensorDimsInv << outputDims3[out_num_dims - 1 - i] << " ";
             }
             delete data;
-            return ERRMSG(VX_ERROR_INVALID_VALUE, "the output tensor dimension passed to the node is [%s] which is wrong. It must be either [%s] or [%s]. \n",
+            return ERRMSG(VX_ERROR_INVALID_VALUE, "the third output tensor dimension passed to the node is [%s] which is wrong. It must be either [%s] or [%s]. \n",
                 tensorDims.str().c_str(), expectedTensorDims.str().c_str(), expectedTensorDimsInv.str().c_str());
         }
 
