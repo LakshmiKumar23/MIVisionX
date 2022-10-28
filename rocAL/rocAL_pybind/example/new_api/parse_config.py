@@ -1,30 +1,25 @@
+# Copyright (c) 2018 - 2022 Advanced Micro Devices, Inc. All rights reserved.
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+
 from argparse import ArgumentParser
 import random
-
-# adds mutually exclusive "--name" and "--no-name" command line arguments, with
-# the result stored in a variable named "name" (with any dashes in "name"
-# replaced by underscores)
-# inspired by https://stackoverflow.com/a/31347222/2209313
-def add_bool_arg(group, name, default=False, help=''):
-    subgroup = group.add_mutually_exclusive_group(required=False)
-    name_with_underscore = name.replace('-', '_').replace(' ', '_')
-
-    truehelp = help
-    falsehelp = help
-    if help != '':
-        falsehelp = 'do not ' + falsehelp
-    if default is True:
-        if truehelp != '':
-            truehelp = truehelp + ' '
-        truehelp = truehelp + '(default)'
-    else:
-        if falsehelp != '':
-            falsehelp = falsehelp + ' '
-        falsehelp = falsehelp + '(default)'
-
-    subgroup.add_argument('--' + name, dest=name_with_underscore, action='store_true', help=truehelp)
-    subgroup.add_argument('--no-' + name, dest=name_with_underscore, action='store_false', help=falsehelp)
-    group.set_defaults(**{name_with_underscore:default})
 
 def parse_args():
     parser = ArgumentParser(description="Train Single Shot MultiBox Detector"
@@ -36,15 +31,38 @@ def parse_args():
                         help='image folder files')
     common_group.add_argument('--batch-size', '-b', type=int, default=10,
                         help='number of examples for each iteration')
-    add_bool_arg(common_group, 'display', default=True)
-    add_bool_arg(common_group, 'print_tensor', default=True)
-    add_bool_arg(common_group, 'classification', default=True)  # use --classification for Classification / --no-classification for Detection
-    add_bool_arg(common_group,'rocal-gpu', default=True)
+    common_group.add_argument('--display', action="store_true",
+                        help='--display:to display output from the pipeline')
+    common_group.add_argument('--no-display', dest='display', action="store_false",
+                        help='--no-display:to not display output from the pipeline')
+    parser.set_defaults(display=True)   #case when none of the above is specified
+
+    common_group.add_argument('--print_tensor', action="store_true",
+                        help='--print_tensor: to print tensor output from the pipeline')
+    common_group.add_argument('--no-print_tensor', dest='print_tensor', action="store_false",
+                        help='--no-print_tensor: to not print tensor output from the pipeline')
+    parser.set_defaults(print_tensor=False) #case when none of the above is specified
+
+    common_group.add_argument('--classification', action="store_true",
+                        help='--classification: to use for classification')
+    common_group.add_argument('--no-classification', dest='classification', action="store_false",
+                        help='--no-classification: to use for detection pipeline')
+    parser.set_defaults(classification=True) #case when none of the above is specified
+
+    common_group.add_argument('--rocal-gpu', default=False, action="store_true",
+                        help='--use_gpu to use gpu')
+    common_group.add_argument('--no-rocal-gpu', dest='rocal-gpu', action="store_false",
+                        help='--no-rocal-gpu to use cpu backend')
 
     common_group.add_argument('--NHWC', action='store_true',
                         help='run input pipeline NHWC format')
-    common_group.add_argument('--fp16', action='store_true',
+    common_group.add_argument('--no-NHWC', dest='NHWC', action='store_false',
+                        help='run input pipeline NCHW format')
+    parser.set_defaults(NHWC=True) #case when none of the above is specified
+
+    common_group.add_argument('--fp16', default=False, action='store_true',
                         help='run input pipeline fp16 format')
+    
     common_group.add_argument('--local-rank', type=int, default=0,
                         help='number of examples for each iteration')
     common_group.add_argument('--world-size', '-w', type=int, default=1,

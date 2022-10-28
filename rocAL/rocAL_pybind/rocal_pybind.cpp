@@ -1,3 +1,25 @@
+/*
+Copyright (c) 2019 - 2022 Advanced Micro Devices, Inc. All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+*/
+
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
@@ -264,6 +286,20 @@ namespace rocal{
         py::enum_<RocalTensorOutputType>(types_m,"RocalTensorOutputType","Tensor types")
             .value("FLOAT",ROCAL_FP32)
             .value("FLOAT16",ROCAL_FP16)
+            .export_values();
+        py::enum_<RocalResizeScalingMode>(types_m,"RocalResizeScalingMode","Decode size policies")
+            .value("SCALING_MODE_DEFAULT",ROCAL_SCALING_MODE_DEFAULT)
+            .value("SCALING_MODE_STRETCH",ROCAL_SCALING_MODE_STRETCH)
+            .value("SCALING_MODE_NOT_SMALLER",ROCAL_SCALING_MODE_NOT_SMALLER)
+            .value("SCALING_MODE_NOT_LARGER",ROCAL_SCALING_MODE_NOT_LARGER)
+            .export_values();
+        py::enum_<RocalResizeInterpolationType>(types_m,"RocalResizeInterpolationType","Decode size policies")
+            .value("NEAREST_NEIGHBOR_INTERPOLATION",ROCAL_NEAREST_NEIGHBOR_INTERPOLATION)
+            .value("LINEAR_INTERPOLATION",ROCAL_LINEAR_INTERPOLATION)
+            .value("CUBIC_INTERPOLATION",ROCAL_CUBIC_INTERPOLATION)
+            .value("LANCZOS_INTERPOLATION",ROCAL_LANCZOS_INTERPOLATION)
+            .value("GAUSSIAN_INTERPOLATION",ROCAL_GAUSSIAN_INTERPOLATION)
+            .value("TRIANGULAR_INTERPOLATION",ROCAL_TRIANGULAR_INTERPOLATION)
             .export_values();
         py::enum_<RocalImageSizeEvaluationPolicy>(types_m,"RocalImageSizeEvaluationPolicy","Decode size policies")
             .value("MAX_SIZE",ROCAL_USE_MAX_SIZE)
@@ -598,13 +634,7 @@ namespace rocal{
             py::arg("crop_pos_x") = NULL,
             py::arg("crop_pos_y") = NULL,
             py::arg("num_of_attempts") = 20);
-        m.def("Resize",&rocalResize,
-            py::return_value_policy::reference,
-            py::arg("context"),
-            py::arg("input"),
-            py::arg("dest_width"),
-            py::arg("dest_height"),
-            py::arg("is_output"));
+        m.def("Resize",&rocalResize, py::return_value_policy::reference);
         m.def("CropResize",&rocalCropResize,
             py::return_value_policy::reference,
             py::arg("context"),

@@ -1,15 +1,35 @@
+# Copyright (c) 2018 - 2022 Advanced Micro Devices, Inc. All rights reserved.
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+
 import sys
 from amd.rocal.plugin.pytorch import ROCALClassificationIterator
 from amd.rocal.pipeline import Pipeline
 import amd.rocal.types as types
 import amd.rocal.fn as fn
 import os
+import cv2
 from parse_config import parse_args
 
 
 def draw_patches(img, idx):
-    #image is expected as a tensor, bboxes as numpy
-    import cv2
+    #image is expected as a tensor, bboxes as numpy array
     args = parse_args()
     if args.rocal_gpu:
         image = img.cpu().numpy()
@@ -104,13 +124,8 @@ def main():
                     cnt = cnt + 1
                     draw_patches(image_batch[element], cnt)
             data_loader.reset()
-    print('Finished Training')
-    print('Finished !!')
-
-
-
-    print("###############################################    CAFFE READER (CLASSIFCATION/ DETECTION)    ###############################################")
-    print("###############################################    SUCCESS                                    ###############################################")
+    print('Finished Training !!')
+    print("##############################  CAFFE READER (CLASSIFCATION/ DETECTION)  SUCCESS  ############################")
 
 if __name__ == '__main__':
     main()
