@@ -7,6 +7,8 @@
 #include <chrono>
 #include <iomanip>
 #include <sstream>
+#include <string>
+#include <iostream>
 #include <sys/stat.h>
 #define MAX_STRING_LENGTH 100
 
@@ -108,6 +110,32 @@ int main(int argc, char **argv) {
         lineNum++;
     }
     out.close();
+
+    //anchors file
+    float anchors[3][3][2];
+    std::string anchorsFileName = ("/home/svcbuild/work/lk/MIVisionX/tests/amd_migraphx_tests/yoloV4/yolov4_anchors.txt");
+
+    std::string line;
+    std::ifstream out(anchorsFileName);
+    if(!out) {
+      std::cout << "anchors file failed to open" << std::endl;
+      return -1; 
+    }
+
+    for(int i = 0; i < 3; i++) {
+        for(int j = 0; j < 3; j++) {
+            for(int k = 0; k < 2; k++) {
+                std::getline(out, line, ',');
+                anchors[i][j][k] = std::stof(line);
+            }
+        }
+    }
+
+    out.close();
+
+    //strides & xyscale
+    int strides[3] = {8, 16, 32};
+    float xyscale[3] = {1.2, 1.1, 1.05};
 
     input_tensor = vxCreateTensor(context, input_num_of_dims, input_dims, VX_TYPE_FLOAT32, 0);
     output_tensor1 = vxCreateTensor(context, output_num_of_dims, output_dims1, VX_TYPE_FLOAT32, 0);
@@ -228,7 +256,7 @@ int main(int argc, char **argv) {
     ERROR_CHECK_STATUS(vxVerifyGraph(graph));
     ERROR_CHECK_STATUS(vxProcessGraph(graph));
 
- /*   status = vxMapTensorPatch(output_tensor1, output_num_of_dims, nullptr, nullptr, &map_id, stride,
+    status = vxMapTensorPatch(output_tensor1, output_num_of_dims, nullptr, nullptr, &map_id, stride,
         (void **)&ptr, VX_READ_ONLY, VX_MEMORY_TYPE_HOST);
     if (status) {
         std::cerr << "ERROR: vxMapTensorPatch() failed for output tensor" << std::endl;
@@ -248,7 +276,7 @@ int main(int argc, char **argv) {
         std::cerr << "ERROR: vxMapTensorPatch() failed for output tensor" << std::endl;
         return status;
     }
-
+/*
     //copy results into file
     outputFile.open(date + "/yolov4-output-results.csv");
     outputFile << "image, classification, probability, label\n";
