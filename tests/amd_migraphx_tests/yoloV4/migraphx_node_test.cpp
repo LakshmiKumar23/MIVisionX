@@ -50,6 +50,16 @@ static void VX_CALLBACK log_callback(vx_context context, vx_reference ref, vx_st
     }
 }
 
+inline int64_t clockCounter()
+{
+    return std::chrono::high_resolution_clock::now().time_since_epoch().count();
+}
+
+inline int64_t clockFrequency()
+{
+    return std::chrono::high_resolution_clock::period::den / std::chrono::high_resolution_clock::period::num;
+}
+
 int main(int argc, char **argv) {
 
     if(argc < 6) {
@@ -99,25 +109,24 @@ int main(int argc, char **argv) {
     std::string labelFileName = ("/home/svcbuild/work/lk/MIVisionX/tests/amd_migraphx_tests/yoloV4/coco.names");
 
     std::string line;
-    std::ifstream out(labelFileName);
-    if(!out) {
+    std::ifstream labelFile(labelFileName);
+    if(!labelFile) {
       std::cout << "label file failed to open" << std::endl;
       return -1; 
     }
     int lineNum = 0;
-    while(getline(out, line)) {
+    while(getline(labelFile, line)) {
         labelText[lineNum] = line;
         lineNum++;
     }
-    out.close();
+    labelFile.close();
 
     //anchors file
     float anchors[3][3][2];
     std::string anchorsFileName = ("/home/svcbuild/work/lk/MIVisionX/tests/amd_migraphx_tests/yoloV4/yolov4_anchors.txt");
 
-    std::string line;
-    std::ifstream out(anchorsFileName);
-    if(!out) {
+    std::ifstream anchorsFile(anchorsFileName);
+    if(!anchorsFile) {
       std::cout << "anchors file failed to open" << std::endl;
       return -1; 
     }
@@ -125,22 +134,22 @@ int main(int argc, char **argv) {
     for(int i = 0; i < 3; i++) {
         for(int j = 0; j < 3; j++) {
             for(int k = 0; k < 2; k++) {
-                std::getline(out, line, ',');
+                std::getline(anchorsFile, line, ',');
                 anchors[i][j][k] = std::stof(line);
             }
         }
     }
 
-    out.close();
+    anchorsFile.close();
 
     //strides & xyscale
     int strides[3] = {8, 16, 32};
     float xyscale[3] = {1.2, 1.1, 1.05};
 
     input_tensor = vxCreateTensor(context, input_num_of_dims, input_dims, VX_TYPE_FLOAT32, 0);
-    output_tensor1 = vxCreateTensor(context, output_num_of_dims, output_dims1, VX_TYPE_FLOAT32, 0);
-    output_tensor2 = vxCreateTensor(context, output_num_of_dims, output_dims2, VX_TYPE_FLOAT32, 0);
-    output_tensor3 = vxCreateTensor(context, output_num_of_dims, output_dims3, VX_TYPE_FLOAT32, 0);
+    output_tensor1 = vxCreateTensor(context, output_num_of_dims, output_dims1, VX_TYPE_FLOAT64, 0);
+    output_tensor2 = vxCreateTensor(context, output_num_of_dims, output_dims2, VX_TYPE_FLOAT64, 0);
+    output_tensor3 = vxCreateTensor(context, output_num_of_dims, output_dims3, VX_TYPE_FLOAT64, 0);
     int count = input_dims[0] * input_dims[1] * input_dims[2] * input_dims[3];
     
     ERROR_CHECK_STATUS(vxMapTensorPatch(input_tensor, input_num_of_dims, nullptr, nullptr, &map_id, stride,
@@ -240,7 +249,7 @@ int main(int argc, char **argv) {
         }
         fclose(fp);
     }
-    
+
     status = vxUnmapTensorPatch(input_tensor, map_id);
     if (status) {
         std::cerr << "ERROR: vxUnmapTensorPatch() failed for " << status << ")" << std::endl;
@@ -248,13 +257,29 @@ int main(int argc, char **argv) {
     }
 
     ERROR_CHECK_STATUS(vxLoadKernels(context, "vx_amd_migraphx"));
-
+    
     vx_node node = amdMIGraphXnode(graph, modelFileName.c_str(), input_tensor, output_tensor1, 
                 false, false, output_tensor2, output_tensor3);
     ERROR_CHECK_OBJECT(node);
 
     ERROR_CHECK_STATUS(vxVerifyGraph(graph));
+
+    // graph process timing
+    int64_t freq = clockFrequency(), t0, t1;
+    t0 = clockCounter();
     ERROR_CHECK_STATUS(vxProcessGraph(graph));
+    t1 = clockCounter();
+    printf("OK: vxProcessGraph() took %.3f msec (1st iteration)\n", (float)(t1-t0)*1000.0f/(float)freq);
+
+    t0 = clockCounter();
+    int N = 100;
+    for(int i = 0; i < N; i++) {
+        status = vxProcessGraph(graph);
+        if(status != VX_SUCCESS)
+            break;
+    }
+    t1 = clockCounter();
+    printf("OK: vxProcessGraph() took %.3f msec (average over %d iterations)\n", (float)(t1-t0)*1000.0f/(float)freq/(float)N, N);
 
     status = vxMapTensorPatch(output_tensor1, output_num_of_dims, nullptr, nullptr, &map_id, stride,
         (void **)&ptr, VX_READ_ONLY, VX_MEMORY_TYPE_HOST);
@@ -276,6 +301,9 @@ int main(int argc, char **argv) {
         std::cerr << "ERROR: vxMapTensorPatch() failed for output tensor" << std::endl;
         return status;
     }
+
+    
+
 /*
     //copy results into file
     outputFile.open(date + "/yolov4-output-results.csv");
@@ -290,23 +318,6 @@ int main(int argc, char **argv) {
         outputFile << i + 1 << "," << final_argmax_result << "," << output_buf[final_argmax_result] << "," << output_label.c_str() << "\n";
     }
     outputFile.close();
-    status = vxUnmapTensorPatch(output_tensor1, map_id);
-    if(status) {
-        std::cerr << "ERROR: vxUnmapTensorPatch() failed for output_tensor1" << std::endl;
-        return status;
-    }
-
-    status = vxUnmapTensorPatch(output_tensor2, map_id);
-    if(status) {
-        std::cerr << "ERROR: vxUnmapTensorPatch() failed for output_tensor2" << std::endl;
-        return status;
-    }
-
-    status = vxUnmapTensorPatch(output_tensor3, map_id);
-    if(status) {
-        std::cerr << "ERROR: vxUnmapTensorPatch() failed for output_tensor" << std::endl;
-        return status;
-    }
 */
     // release resources
     ERROR_CHECK_STATUS(vxReleaseNode(&node));
@@ -316,6 +327,7 @@ int main(int argc, char **argv) {
     ERROR_CHECK_STATUS(vxReleaseTensor(&output_tensor2));
     ERROR_CHECK_STATUS(vxReleaseTensor(&output_tensor3));
     ERROR_CHECK_STATUS(vxReleaseContext(&context));
+    printf("OK: successful\n");
     return 0;
 }
 
