@@ -182,12 +182,13 @@ For the convenience of the developer, we here provide the setup script which wil
   python MIVisionX-setup.py --directory [setup directory - optional (default:~/)]
                             --opencv    [OpenCV Version - optional (default:4.6.0)]
                             --protobuf  [ProtoBuf Version - optional (default:3.12.4)]
-                            --rpp       [RPP Version - optional (default:0.98)]
-                            --ffmpeg    [FFMPEG V4.4.2 Installation - optional (default:no) [options:yes/no]]
-                            --rocal     [MIVisionX rocAL Dependency Install - optional (default:yes) [options:yes/no]]
-                            --neural_net[MIVisionX Neural Net Dependency Install - optional (default:yes) [options:yes/no]]
-                            --reinstall [Remove previous setup and reinstall (default:no)[options:yes/no]]
-                            --backend   [MIVisionX Dependency Backend - optional (default:HIP) [options:OCL/HIP]]
+                            --rpp       [RPP Version - optional (default:0.99)]
+                            --ffmpeg    [FFMPEG V4.4.2 Installation - optional (default:ON) [options:ON/OFF]]
+                            --rocal     [MIVisionX rocAL Dependency Install - optional (default:ON) [options:ON/OFF]]
+                            --neural_net[MIVisionX Neural Net Dependency Install - optional (default:ON) [options:ON/OFF]]
+                            --inference [MIVisionX Neural Net Inference Dependency Install - optional (default:ON) [options:ON/OFF]]
+                            --reinstall [Remove previous setup and reinstall (default:OFF)[options:ON/OFF]]
+                            --backend   [MIVisionX Dependency Backend - optional (default:HIP) [options:HIP/OCL/CPU]]
                             --rocm_path [ROCm Installation Path - optional (default:/opt/rocm) - ROCm Installation Required]
   ```
     **Note:**
@@ -273,7 +274,7 @@ macOS [build instructions](https://github.com/GPUOpen-ProfessionalCompute-Librar
 
     + run the setup script to install all the dependencies required by the **OPENCL** GPU backend:
     ```
-    python MIVisionX-setup.py --reinstall yes --backend OCL
+    python MIVisionX-setup.py --reinstall ON --backend OCL
     ```
 
     + run the below commands to build MIVisionX with the **OPENCL** GPU backend:
@@ -433,17 +434,17 @@ Review all notable [changes](CHANGELOG.md#changelog) with the latest release
 * Linux distribution
   + Ubuntu - `20.04` / `22.04`
   + CentOS - `7` / `8`
-  + SLES - `15-SP2`
+  + SLES - `15-SP3`
 * ROCm: rocm-core - `5.4.0.50400-72`
 * miopen-hip - `2.19.0.50400-72`
 * miopen-opencl - `2.18.0.50300-63`
 * migraphx - `2.4.0.50400-72`
 * Protobuf - [V3.12.4](https://github.com/protocolbuffers/protobuf/releases/tag/v3.12.4)
 * OpenCV - [4.6.0](https://github.com/opencv/opencv/releases/tag/4.6.0)
-* RPP - [0.98](https://github.com/GPUOpen-ProfessionalCompute-Libraries/rpp/releases/tag/0.98)
+* RPP - [0.99](https://github.com/GPUOpen-ProfessionalCompute-Libraries/rpp/releases/tag/0.99)
 * FFMPEG - [n4.4.2](https://github.com/FFmpeg/FFmpeg/releases/tag/n4.4.2)
 * Dependencies for all the above packages
-* MIVisionX Setup Script - `V2.3.10`
+* MIVisionX Setup Script - `V2.4.0`
 
 ### Known issues
 
